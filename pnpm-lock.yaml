@@ -510,6 +510,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 5.2.0(vite@7.3.7(@types/node@25.9.9)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)(yaml@2.9.1))
+      '@workspace/city-eyes-system':
+        specifier: workspace:*
+        version: link:../city-eyes-system
       chokidar:
         specifier: ^4.0.3
         version: 4.0.3
