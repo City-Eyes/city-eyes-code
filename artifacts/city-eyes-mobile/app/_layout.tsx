@@ -1,5 +1,5 @@
 import React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -8,9 +8,10 @@ import { useDesignSystemFonts } from "@workspace/city-eyes-system/hooks/use-font
 import { setBaseUrl } from "@workspace/api-client-react";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { Stack } from "expo-router";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, triggerAuthSessionExpired } from "@/lib/auth";
 import { getStoredAuthToken } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api-url";
+import { clearProtectedCache, isAuthorizationError } from "@/lib/protected-cache";
 
 const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
 if (!publicDomain) {
@@ -20,6 +21,16 @@ setBaseUrl(getApiBaseUrl(publicDomain));
 setAuthTokenGetter(getStoredAuthToken);
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error) => {
+      if (isAuthorizationError(error)) {
+        void clearProtectedCache(queryClient);
+        if ((error as any)?.status === 401) {
+          triggerAuthSessionExpired();
+        }
+      }
+    },
+  }),
   defaultOptions: {
     queries: {
       retry: 1,
@@ -35,6 +46,8 @@ function RootLayoutNav() {
       <Stack.Screen name="city/[cityId]" />
       <Stack.Screen name="city/[cityId]/report/[reportId]" />
       <Stack.Screen name="city/[cityId]/report/new" />
+      <Stack.Screen name="city/[cityId]/queue" />
+      <Stack.Screen name="city/[cityId]/queue/[reportId]" />
       <Stack.Screen name="auth" />
       <Stack.Screen name="+not-found" />
     </Stack>

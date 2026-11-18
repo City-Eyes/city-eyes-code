@@ -13,6 +13,8 @@ import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
+import { clearProtectedCache } from "./protected-cache";
 import { getApiBaseUrl } from "@/lib/api-url";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -20,6 +22,14 @@ WebBrowser.maybeCompleteAuthSession();
 const AUTH_TOKEN_KEY = "auth_session_token";
 const ISSUER_URL = process.env.EXPO_PUBLIC_ISSUER_URL ?? "https://replit.com/oidc";
 let webSessionToken: string | null = null;
+
+let authSessionExpiredHandler: (() => void) | null = null;
+export function registerAuthSessionExpiredHandler(handler: (() => void) | null) {
+  authSessionExpiredHandler = handler;
+}
+export function triggerAuthSessionExpired() {
+  authSessionExpiredHandler?.();
+}
 
 export async function getStoredAuthToken() {
   return Platform.OS === "web"
@@ -70,6 +80,40 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  return Platform.OS === "web" ? (
+    <WebAuthProvider>{children}</WebAuthProvider>
+  ) : (
+    <NativeAuthProvider>{children}</NativeAuthProvider>
+  );
+}
+
+function WebAuthProvider({ children }: { children: ReactNode }) {
+  const [error, setError] = useState("");
+  const login = useCallback(async () => {
+    setError("O acesso seguro à conta está disponível no aplicativo móvel.");
+  }, []);
+  const logout = useCallback(async () => setError(""), []);
+  const refreshUser = useCallback(async () => setError(""), []);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user: null,
+        isLoading: false,
+        error,
+        login,
+        logout,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+function NativeAuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const sessionRevision = useRef(0);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -92,10 +136,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     discovery,
   );
 
+  const logout = useCallback(async () => {
+    ++sessionRevision.current;
+    setIsLoading(true);
+    setUser(null);
+    try {
+      const token = await getStoredAuthToken();
+      await clearStoredAuthToken();
+      await clearProtectedCache(queryClient);
+      const apiBase = getApiBaseUrl();
+      if (token && apiBase) {
+        await fetch(`${apiBase}/api/mobile-auth/logout`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(5000),
+        });
+      }
+    } catch {
+      // The local token is still removed when the server cannot be reached or times out.
+    } finally {
+      await clearStoredAuthToken();
+      setUser(null);
+      setError("");
+      setIsLoading(false);
+    }
+  }, [queryClient]);
+
+  useEffect(() => {
+    registerAuthSessionExpiredHandler(() => {
+      void logout();
+    });
+    return () => {
+      registerAuthSessionExpiredHandler(null);
+    };
+  }, [logout]);
+
   const refreshUser = useCallback(async () => {
+    const revision = ++sessionRevision.current;
+    setIsLoading(true);
     try {
       const token = await getStoredAuthToken();
       if (!token) {
+        await clearProtectedCache(queryClient);
+        if (revision !== sessionRevision.current) return;
         setUser(null);
         setError("");
         return;
@@ -105,8 +188,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${apiBase}/api/auth/user`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (response.status === 401) {
+        if (revision !== sessionRevision.current) return;
+        await clearStoredAuthToken();
+        await clearProtectedCache(queryClient);
+        setUser(null);
+        setError("");
+        return;
+      }
       if (!response.ok) throw new Error("Account check failed");
       const body = (await response.json()) as { user: AuthUser | null };
+      if (revision !== sessionRevision.current) return;
+      await clearProtectedCache(queryClient);
+      if (revision !== sessionRevision.current) return;
       if (body.user) {
         setUser(body.user);
         setError("");
@@ -116,11 +210,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError("");
       }
     } catch {
+      if (revision !== sessionRevision.current) return;
       setError("Não foi possível verificar sua conta. Confira a conexão e tente novamente.");
     } finally {
-      setIsLoading(false);
+      if (revision === sessionRevision.current) setIsLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     void refreshUser();
@@ -144,6 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return;
     }
+    const revision = sessionRevision.current;
     setIsLoading(true);
     setError("");
 
@@ -168,10 +264,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!exchangeResponse.ok) throw new Error("Login exchange failed");
         const body = (await exchangeResponse.json()) as { token?: string };
         if (!body.token) throw new Error("Session missing");
+        if (revision !== sessionRevision.current) return;
         await setStoredAuthToken(body.token);
+        if (revision !== sessionRevision.current) return;
         await refreshUser();
+        if (revision !== sessionRevision.current) return;
         setNonce(Crypto.randomUUID());
       } catch {
+        if (revision !== sessionRevision.current) return;
         setError("Não foi possível concluir o acesso. Tente entrar novamente.");
         setIsLoading(false);
       }
@@ -196,32 +296,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [promptAsync, request?.codeVerifier]);
 
-  const logout = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const token = await getStoredAuthToken();
-      const apiBase = getApiBaseUrl();
-      if (token && apiBase) {
-        await fetch(`${apiBase}/api/mobile-auth/logout`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-    } catch {
-      // The local token is still removed when the server cannot be reached.
-    } finally {
-      await clearStoredAuthToken();
-      setUser(null);
-      setError("");
-      setIsLoading(false);
-    }
-  }, []);
-
   return (
     <AuthContext.Provider
       value={{ user, isLoading, error, login, logout, refreshUser }}
     >
-      {children}
+      <React.Fragment key={user?.id ?? "anonymous"}>
+        {children}
+      </React.Fragment>
     </AuthContext.Provider>
   );
 }
