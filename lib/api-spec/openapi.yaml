@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: public-directory
+    description: Public city and demonstration report data
 paths:
   /healthz:
     get:
@@ -24,6 +26,100 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /cities:
+    get:
+      operationId: listCities
+      tags: [public-directory]
+      summary: List supported cities
+      description: Returns the cities available in the CITY EYES demonstration.
+      responses:
+        "200":
+          description: Available cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/City"
+  /cities/{cityId}/reports:
+    get:
+      operationId: listCityReports
+      tags: [public-directory]
+      summary: List public reports for one city
+      description: Returns a paginated list scoped to the requested city.
+      parameters:
+        - name: cityId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [curitiba, londrina, maringa, ponta-grossa]
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100000
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Paginated public reports
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportPage"
+        "400":
+          description: Invalid pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /cities/{cityId}/reports/{reportId}:
+    get:
+      operationId: getCityReport
+      tags: [public-directory]
+      summary: Get a public report from one city
+      description: The report is returned only when it belongs to the requested city.
+      parameters:
+        - name: cityId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [curitiba, londrina, maringa, ponta-grossa]
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "404":
+          description: City or report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +129,75 @@ components:
           type: string
       required:
         - status
+    City:
+      type: object
+      properties:
+        id:
+          type: string
+          enum: [curitiba, londrina, maringa, ponta-grossa]
+        name:
+          type: string
+        state:
+          type: string
+        reportCount:
+          type: integer
+      required: [id, name, state, reportCount]
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+        cityId:
+          type: string
+          enum: [curitiba, londrina, maringa, ponta-grossa]
+        cityName:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [accessibility, drainage, lighting, public-space, waste]
+        locationLabel:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        isDemo:
+          type: boolean
+      required:
+        - id
+        - cityId
+        - cityName
+        - title
+        - description
+        - category
+        - locationLabel
+        - createdAt
+        - isDemo
+    ReportPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Report"
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        hasNextPage:
+          type: boolean
+      required: [items, page, limit, total, hasNextPage]
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required: [code, message]
 

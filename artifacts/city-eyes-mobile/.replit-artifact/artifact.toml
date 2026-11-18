@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/"
+title = "CITY EYES — Mobile"
+description = "Aplicativo Expo do CITY EYES para consultar relatos demonstrativos de problemas urbanos em Curitiba, Londrina, Maringá e Ponta Grossa."
+version = "1.0.0"
+id = "artifacts/city-eyes-mobile"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/" ]
+localPort = 19916
+
+[services.development]
+run = "pnpm --filter @workspace/city-eyes-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/city-eyes-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/city-eyes-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "19916"
+BASE_PATH = "/"

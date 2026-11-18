@@ -30,6 +30,9 @@ export default defineConfig({
       clean: true,
       prettier: true,
       override: {
+        query: {
+          version: 5,
+        },
         fetch: {
           includeHttpResponseReturnType: false,
         },
@@ -55,6 +58,10 @@ export default defineConfig({
       mode: "split",
       clean: true,
       prettier: true,
+      workspaceExports: (generatedExports) =>
+        generatedExports.filter(
+          (exportPath) => exportPath !== "./generated/types",
+        ),
       override: {
         zod: {
           // Orval resolves `auto` from lib/api-spec/package.json, which has no
