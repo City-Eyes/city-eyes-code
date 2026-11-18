@@ -7,7 +7,7 @@ import {
 } from "@workspace/api-zod";
 import { db, mediaUploads, reportEvents, reports } from "@workspace/db";
 import { cities, type ReportRecord } from "@workspace/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import type { CityRecord } from "@workspace/db/schema";
 import {
@@ -124,42 +124,79 @@ export function createReportSubmissionRouter(
         }
 
         const now = new Date();
-        const [upload] = await db
-          .select()
-          .from(mediaUploads)
-          .where(eq(mediaUploads.objectPath, input.imageObjectPath))
-          .limit(1);
-        if (!upload || upload.ownerId !== req.user!.id) {
-          return sendApiError(
-            res,
-            404,
-            "PHOTO_NOT_FOUND",
-            "A foto enviada não está disponível. Selecione-a novamente.",
+        const reportId = randomUUID();
+        const eventId = randomUUID();
+        const retentionDeadline = new Date(
+          now.getTime() + PHOTO_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+        );
+
+        // Precompute and validate request host before any storage mutation
+        buildPublicPhotoUrl(req, "/objects/published/precheck");
+
+        // Insert report row first to satisfy FK constraint on mediaUploads.reportId
+        let reportRowInserted = false;
+        try {
+          await db.insert(reports).values({
+            id: reportId,
+            cityId: city.id,
+            reporterId: req.user!.id,
+            title: input.title,
+            description: input.description,
+            category: input.category,
+            locationLabel: input.locationLabel,
+            latitude: input.latitude,
+            longitude: input.longitude,
+            imageObjectPath: null,
+            captureSource: input.captureSource,
+            publicConsentAt: now,
+            status: "open",
+            createdAt: now,
+            isDemo: false,
+          });
+          reportRowInserted = true;
+        } catch (insertReportError) {
+          req.log.error(
+            {
+              errorName:
+                insertReportError instanceof Error
+                  ? insertReportError.name
+                  : "UnknownError",
+            },
+            "Could not initialize report record",
           );
-        }
-        if (
-          upload.reportId ||
-          upload.uploadUrlExpiresAt <= now ||
-          upload.expiresAt <= now
-        ) {
           return sendApiError(
             res,
-            409,
-            "PHOTO_UPLOAD_EXPIRED",
-            "O envio da foto expirou. Selecione-a novamente.",
+            500,
+            "REPORT_SUBMISSION_FAILED",
+            "Não foi possível enviar o relato agora. Seu rascunho foi mantido.",
           );
         }
 
-        let finalObjectPath: string;
-        try {
-          const verified = await storage.verifyImage(
-            upload.objectPath,
-            upload.contentType,
-            upload.expectedSize,
-          );
-          finalObjectPath = verified.objectPath;
-        } catch (error) {
-          if (error instanceof ObjectNotFoundError) {
+        // Atomically reserve the upload to prevent concurrent duplicate processing
+        const [upload] = await db
+          .update(mediaUploads)
+          .set({ reportId })
+          .where(
+            and(
+              eq(mediaUploads.objectPath, input.imageObjectPath),
+              eq(mediaUploads.ownerId, req.user!.id),
+              isNull(mediaUploads.reportId),
+              gt(mediaUploads.uploadUrlExpiresAt, now),
+              gt(mediaUploads.expiresAt, now),
+            ),
+          )
+          .returning();
+
+        if (!upload) {
+          if (reportRowInserted) {
+            await db.delete(reports).where(eq(reports.id, reportId)).catch(() => undefined);
+          }
+          const [existing] = await db
+            .select()
+            .from(mediaUploads)
+            .where(eq(mediaUploads.objectPath, input.imageObjectPath))
+            .limit(1);
+          if (!existing || existing.ownerId !== req.user!.id) {
             return sendApiError(
               res,
               404,
@@ -167,199 +204,245 @@ export function createReportSubmissionRouter(
               "A foto enviada não está disponível. Selecione-a novamente.",
             );
           }
-          if (error instanceof InvalidUploadedImageError) {
-            return sendApiError(
-              res,
-              400,
-              "INVALID_PHOTO",
-              "A foto não corresponde a um arquivo JPEG, PNG ou WebP válido.",
-            );
-          }
-          req.log.warn(
-            {
-              errorName: error instanceof Error ? error.name : "UnknownError",
-            },
-            "Could not verify an uploaded report photo",
-          );
           return sendApiError(
             res,
-            503,
-            "PHOTO_STORAGE_UNAVAILABLE",
-            "Não foi possível verificar a foto agora. Tente novamente.",
+            409,
+            "PHOTO_UPLOAD_EXPIRED",
+            "A foto já foi usada ou o envio expirou. Selecione-a novamente.",
           );
         }
 
-        const publicPhotoUrl = buildPublicPhotoUrl(req, finalObjectPath);
-        const reportId = randomUUID();
-        const eventId = randomUUID();
-        const retentionDeadline = new Date(
-          now.getTime() + PHOTO_RETENTION_DAYS * 24 * 60 * 60 * 1000,
-        );
-        let result: (ReportRecord & { cityName: string }) | undefined;
+        let finalObjectPath: string | undefined;
+        let committed = false;
 
         try {
-          await db.transaction(async (tx) => {
-            const [lockedUpload] = await tx
-              .select()
-              .from(mediaUploads)
-              .where(
-                and(
-                  eq(mediaUploads.objectPath, upload.objectPath),
-                  eq(mediaUploads.ownerId, req.user!.id),
-                  isNull(mediaUploads.reportId),
-                ),
-              )
-              .for("update")
-              .limit(1);
-            if (
-              !lockedUpload ||
-              lockedUpload.uploadUrlExpiresAt <= new Date() ||
-              lockedUpload.expiresAt <= new Date()
-            ) {
-              throw new UploadConflictError();
-            }
-
-            try {
-              await storage.setVisibility(
-                finalObjectPath,
-                req.user!.id,
-                "public",
-              );
-            } catch {
-              throw new PhotoStorageError();
-            }
-
-            const [created] = await tx
-              .insert(reports)
-              .values({
-                id: reportId,
-                cityId: city.id,
-                reporterId: req.user!.id,
-                title: input.title,
-                description: input.description,
-                category: input.category,
-                locationLabel: input.locationLabel,
-                latitude: input.latitude,
-                longitude: input.longitude,
-                imageObjectPath: finalObjectPath,
-                captureSource: input.captureSource,
-                publicConsentAt: now,
-                status: "open",
-                createdAt: now,
-                isDemo: false,
-              })
-              .returning();
-            await tx.insert(reportEvents).values({
-              id: eventId,
-              reportId,
-              cityId: city.id,
-              statusBefore: null,
-              statusAfter: "open",
-              publicNote: null,
-              internalNote: null,
-              actorId: req.user!.id,
-              createdAt: now,
-            });
-            await tx
-              .update(mediaUploads)
-              .set({ reportId })
-              .where(eq(mediaUploads.objectPath, upload.objectPath));
-            await tx.insert(mediaUploads).values({
-              objectPath: finalObjectPath,
-              ownerId: req.user!.id,
-              contentType: upload.contentType,
-              expectedSize: upload.expectedSize,
-              requestedAt: now,
-              uploadUrlExpiresAt: now,
-              expiresAt: retentionDeadline,
-              reportId,
-            });
-            result = { ...created, cityName: city.name };
-          });
-        } catch (error) {
-          {
-            try {
-              await storage.deleteObject(finalObjectPath);
-            } catch {
-              try {
-                await storage.setVisibility(finalObjectPath, req.user!.id, "private");
-              } catch (deleteError) {
-                req.log.error(
-                  {
-                    errorName:
-                      deleteError instanceof Error
-                        ? deleteError.name
-                        : "UnknownError",
-                  },
-                  "Could not clean up a failed report photo",
-                );
-              }
-            }
-          }
-          if (error instanceof UploadConflictError) {
-            return sendApiError(
-              res,
-              409,
-              "PHOTO_UPLOAD_EXPIRED",
-              "A foto já foi usada ou o envio expirou. Selecione-a novamente.",
+          try {
+            const verified = await storage.verifyImage(
+              upload.objectPath,
+              upload.contentType,
+              upload.expectedSize,
             );
-          }
-          if (error instanceof PhotoStorageError) {
+            finalObjectPath = verified.objectPath;
+          } catch (error) {
+            if (error instanceof ObjectNotFoundError) {
+              return sendApiError(
+                res,
+                404,
+                "PHOTO_NOT_FOUND",
+                "A foto enviada não está disponível. Selecione-a novamente.",
+              );
+            }
+            if (error instanceof InvalidUploadedImageError) {
+              return sendApiError(
+                res,
+                400,
+                "INVALID_PHOTO",
+                "A foto não corresponde a um arquivo JPEG, PNG ou WebP válido.",
+              );
+            }
+            req.log.warn(
+              {
+                errorName: error instanceof Error ? error.name : "UnknownError",
+              },
+              "Could not verify an uploaded report photo",
+            );
             return sendApiError(
               res,
               503,
               "PHOTO_STORAGE_UNAVAILABLE",
-              "Não foi possível publicar a foto agora. Seu rascunho foi mantido.",
+              "Não foi possível verificar a foto agora. Tente novamente.",
             );
           }
-          req.log.error(
-            {
-              errorName: error instanceof Error ? error.name : "UnknownError",
-            },
-            "Could not save an urban report",
-          );
-          return sendApiError(
-            res,
-            500,
-            "REPORT_SUBMISSION_FAILED",
-            "Não foi possível enviar o relato agora. Seu rascunho foi mantido.",
-          );
-        }
 
-        if (!result) {
-          return sendApiError(
-            res,
-            500,
-            "REPORT_SUBMISSION_FAILED",
-            "Não foi possível enviar o relato agora. Seu rascunho foi mantido.",
-          );
-        }
-        return res.status(201).json(
-          CreateCityReportResponse.parse({
-            id: result.id,
-            cityId: result.cityId,
-            cityName: result.cityName,
-            title: result.title,
-            description: result.description,
-            category: result.category,
-            locationLabel: result.locationLabel,
-            createdAt: result.createdAt,
-            isDemo: result.isDemo,
-            latitude: result.latitude,
-            longitude: result.longitude,
-            photoUrl: publicPhotoUrl,
-            status: result.status,
-            events: [
-              {
+          const publicPhotoUrl = buildPublicPhotoUrl(req, finalObjectPath);
+          let result: (ReportRecord & { cityName: string }) | undefined;
+
+          try {
+            await db.transaction(async (tx) => {
+              const [lockedUpload] = await tx
+                .select()
+                .from(mediaUploads)
+                .where(
+                  and(
+                    eq(mediaUploads.objectPath, upload.objectPath),
+                    eq(mediaUploads.ownerId, req.user!.id),
+                    eq(mediaUploads.reportId, reportId),
+                  ),
+                )
+                .for("update")
+                .limit(1);
+              if (
+                !lockedUpload ||
+                lockedUpload.uploadUrlExpiresAt <= new Date() ||
+                lockedUpload.expiresAt <= new Date()
+              ) {
+                throw new UploadConflictError();
+              }
+
+              try {
+                await storage.setVisibility(
+                  finalObjectPath!,
+                  req.user!.id,
+                  "public",
+                );
+              } catch {
+                throw new PhotoStorageError();
+              }
+
+              const [updated] = await tx
+                .update(reports)
+                .set({ imageObjectPath: finalObjectPath })
+                .where(eq(reports.id, reportId))
+                .returning();
+              await tx.insert(reportEvents).values({
                 id: eventId,
+                reportId,
+                cityId: city.id,
                 statusBefore: null,
                 statusAfter: "open",
                 publicNote: null,
+                internalNote: null,
+                actorId: req.user!.id,
                 createdAt: now,
+              });
+              await tx.insert(mediaUploads).values({
+                objectPath: finalObjectPath!,
+                ownerId: req.user!.id,
+                contentType: upload.contentType,
+                expectedSize: upload.expectedSize,
+                requestedAt: now,
+                uploadUrlExpiresAt: now,
+                expiresAt: retentionDeadline,
+                reportId,
+              });
+              result = { ...updated, cityName: city.name };
+              committed = true;
+            });
+          } catch (error) {
+            if (error instanceof UploadConflictError) {
+              return sendApiError(
+                res,
+                409,
+                "PHOTO_UPLOAD_EXPIRED",
+                "A foto já foi usada ou o envio expirou. Selecione-a novamente.",
+              );
+            }
+            if (error instanceof PhotoStorageError) {
+              return sendApiError(
+                res,
+                503,
+                "PHOTO_STORAGE_UNAVAILABLE",
+                "Não foi possível publicar a foto agora. Seu rascunho foi mantido.",
+              );
+            }
+            req.log.error(
+              {
+                errorName: error instanceof Error ? error.name : "UnknownError",
               },
-            ],
-          }),
-        );
+              "Could not save an urban report",
+            );
+            return sendApiError(
+              res,
+              500,
+              "REPORT_SUBMISSION_FAILED",
+              "Não foi possível enviar o relato agora. Seu rascunho foi mantido.",
+            );
+          }
+
+          if (!result) {
+            return sendApiError(
+              res,
+              500,
+              "REPORT_SUBMISSION_FAILED",
+              "Não foi possível enviar o relato agora. Seu rascunho foi mantido.",
+            );
+          }
+
+          return res.status(201).json(
+            CreateCityReportResponse.parse({
+              id: result.id,
+              cityId: result.cityId,
+              cityName: result.cityName,
+              title: result.title,
+              description: result.description,
+              category: result.category,
+              locationLabel: result.locationLabel,
+              createdAt: result.createdAt,
+              isDemo: result.isDemo,
+              latitude: result.latitude,
+              longitude: result.longitude,
+              photoUrl: publicPhotoUrl,
+              status: result.status,
+              events: [
+                {
+                  id: eventId,
+                  statusBefore: null,
+                  statusAfter: "open",
+                  publicNote: null,
+                  createdAt: now,
+                },
+              ],
+            }),
+          );
+        } finally {
+          if (finalObjectPath && !committed) {
+            try {
+              await storage.deleteObject(finalObjectPath);
+            } catch (deleteError) {
+              req.log.warn(
+                {
+                  errorName:
+                    deleteError instanceof Error ? deleteError.name : "UnknownError",
+                },
+                "Could not delete orphaned photo immediately; setting private and inserting record for sweep",
+              );
+              try {
+                await storage.setVisibility(finalObjectPath, req.user!.id, "private");
+              } catch {}
+              try {
+                await db
+                  .insert(mediaUploads)
+                  .values({
+                    objectPath: finalObjectPath,
+                    ownerId: req.user!.id,
+                    contentType: upload.contentType,
+                    expectedSize: upload.expectedSize,
+                    requestedAt: now,
+                    uploadUrlExpiresAt: now,
+                    expiresAt: now,
+                    reportId: null,
+                  })
+                  .onConflictDoNothing();
+              } catch (insertError) {
+                req.log.error(
+                  {
+                    errorName:
+                      insertError instanceof Error ? insertError.name : "UnknownError",
+                  },
+                  "Could not record orphaned photo for retention cleanup",
+                );
+              }
+            }
+          }
+          if (!committed) {
+            try {
+              await db
+                .update(mediaUploads)
+                .set({ reportId: null })
+                .where(
+                  and(
+                    eq(mediaUploads.objectPath, input.imageObjectPath),
+                    eq(mediaUploads.reportId, reportId),
+                  ),
+                );
+            } catch {}
+            if (reportRowInserted) {
+              try {
+                await db.delete(reports).where(eq(reports.id, reportId));
+              } catch {}
+            }
+          }
+        }
       } catch (error) {
         req.log.error(
           {
