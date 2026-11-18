@@ -75,6 +75,7 @@ export default function OperatorReportDetailScreen() {
   const [selectedStatus, setSelectedStatus] = useState<ReportStatus>("open");
   const [publicNote, setPublicNote] = useState("");
   const [internalNote, setInternalNote] = useState("");
+  const [evidenceImageObjectPath, setEvidenceImageObjectPath] = useState("");
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const operatorCities = useListOperatorCities({
@@ -164,6 +165,9 @@ export default function OperatorReportDetailScreen() {
           ...(publicNote.trim() ? { publicNote: publicNote.trim() } : {}),
           ...(internalNote.trim()
             ? { internalNote: internalNote.trim() }
+            : {}),
+          ...(evidenceImageObjectPath.trim()
+            ? { evidenceImageObjectPath: evidenceImageObjectPath.trim() }
             : {}),
         },
       });
@@ -295,6 +299,11 @@ export default function OperatorReportDetailScreen() {
                   ? ` · ${report.latitude}, ${report.longitude}`
                   : ""}
               </Typography>
+              <View style={styles.confirmationsRow}>
+                <Typography variant="caption">
+                  Apoios cidadãos: {report.supportsCount} · Confirmações de resolução: {report.resolutionConfirmationsCount}
+                </Typography>
+              </View>
             </Card>
 
             <Card style={styles.reportCard}>
@@ -349,6 +358,26 @@ export default function OperatorReportDetailScreen() {
               <Typography variant="caption">
                 NOTA INTERNA · visível somente nesta fila municipal
               </Typography>
+              {selectedStatus === "resolved" ? (
+                <>
+                  <TextInput
+                    testID={`queue-evidence-photo-${report.id}`}
+                    value={evidenceImageObjectPath}
+                    onChangeText={setEvidenceImageObjectPath}
+                    placeholder="Foto de evidência (ex: /objects/published/...)"
+                    placeholderTextColor={colors.mutedForeground}
+                    maxLength={255}
+                    accessibilityLabel="Foto de evidência da resolução"
+                    style={[
+                      styles.input,
+                      { borderColor: colors.border, color: colors.foreground, minHeight: 48 },
+                    ]}
+                  />
+                  <Typography variant="caption">
+                    EVIDÊNCIA FOTOGRÁFICA · registro público da resolução do problema
+                  </Typography>
+                </>
+              ) : null}
               {message ? (
                 <Typography variant="muted">{message}</Typography>
               ) : null}
@@ -387,6 +416,16 @@ export default function OperatorReportDetailScreen() {
                       <Typography variant="muted">
                         Nota interna: {event.internalNote}
                       </Typography>
+                    ) : null}
+                    {event.evidenceImageUrl ? (
+                      <View style={styles.evidenceContainer}>
+                        <Typography variant="caption">FOTO DE RESOLUÇÃO ANEXADA</Typography>
+                        <Image
+                          source={{ uri: event.evidenceImageUrl }}
+                          accessibilityLabel="Foto de evidência da resolução"
+                          style={styles.evidencePhoto}
+                        />
+                      </View>
                     ) : null}
                   </View>
                 ))
@@ -436,5 +475,17 @@ const styles = StyleSheet.create({
     gap: nativeTheme.spacing.xs,
     borderTopWidth: 1,
     paddingTop: nativeTheme.spacing.sm,
+  },
+  confirmationsRow: {
+    paddingVertical: nativeTheme.spacing.xs,
+  },
+  evidenceContainer: {
+    gap: nativeTheme.spacing.xs,
+    marginTop: nativeTheme.spacing.xs,
+  },
+  evidencePhoto: {
+    width: "100%",
+    height: 180,
+    borderRadius: nativeTheme.radius,
   },
 });
