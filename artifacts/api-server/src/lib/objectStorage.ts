@@ -27,6 +27,7 @@ export class InvalidUploadedImageError extends Error {
 }
 
 export interface VerifiedImage {
+  objectPath: string;
   contentType: "image/jpeg" | "image/png" | "image/webp";
   size: number;
 }
@@ -109,11 +110,26 @@ export class ObjectStorageService implements ImageStorage {
       throw new InvalidUploadedImageError();
     }
 
-    const [bytes] = await file.download();
-    if (!isSupportedImageSignature(bytes, expectedContentType)) {
+    // Pin the read to the exact generation whose metadata was validated.
+    if (!metadata.generation) throw new InvalidUploadedImageError();
+    const pinned = file.bucket.file(file.name, { generation: metadata.generation });
+    const [bytes] = await pinned.download();
+    if (bytes.length !== actualSize || !isSupportedImageSignature(bytes, expectedContentType)) {
       throw new InvalidUploadedImageError();
     }
+    // Never publish the client-writable staging key. Only these validated bytes
+    // are written to a fresh, create-only server-owned destination.
+    const finalPath = `/objects/published/${randomUUID()}`;
+    const { bucketName, storagePath } = parseObjectPath(
+      `/${this.getPrivateObjectDir()}/${finalPath.slice("/objects/".length)}`,
+    );
+    await objectStorageClient.bucket(bucketName).file(storagePath).save(bytes, {
+      resumable: false,
+      preconditionOpts: { ifGenerationMatch: 0 },
+      metadata: { contentType: expectedContentType },
+    });
     return {
+      objectPath: finalPath,
       contentType: expectedContentType as VerifiedImage["contentType"],
       size: actualSize,
     };
@@ -129,6 +145,7 @@ export class ObjectStorageService implements ImageStorage {
   }
 
   async streamPublicImage(objectPath: string) {
+    if (!objectPath.startsWith("/objects/published/")) throw new ObjectNotFoundError();
     const file = await this.getObjectEntityFile(objectPath);
     const policy = await getObjectAclPolicy(file);
     if (!policy || !(await canAccessObject(file, ObjectPermission.READ))) {

@@ -21,6 +21,7 @@ import { BackHeader, Screen } from "@/components/app-ui";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { parseCityId } from "@/components/app-ui";
 import { useAuth } from "@/lib/auth";
+import { draftKeyFor } from "@/lib/protected-cache";
 
 type Draft = { title: string; description: string; category: ReportInputCategory; locationLabel: string; latitude: string; longitude: string; uri: string; captureSource: "camera" | "gallery"; consent: boolean };
 const initialDraft: Draft = { title: "", description: "", category: "accessibility", locationLabel: "", latitude: "", longitude: "", uri: "", captureSource: "gallery", consent: false };
@@ -44,22 +45,30 @@ export default function NewReportScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const draftKey = auth.user && cityId ? draftKeyFor(auth.user.id, cityId) : null;
+  const [hydrated, setHydrated] = useState<string | null>(null);
+  const active = React.useRef(true);
+  useEffect(() => () => { active.current = false; }, []);
 
   useEffect(() => {
     let mounted = true;
-    void AsyncStorage.getItem(`city-eyes-report-draft-${cityId ?? "unknown"}`).then((stored) => {
+    setHydrated(null);
+    setDraft(initialDraft);
+    if (!draftKey) return;
+    void AsyncStorage.removeItem(`city-eyes-report-draft-${cityId}`).catch(() => undefined);
+    void AsyncStorage.getItem(draftKey).then((stored) => {
       if (mounted && stored) {
-        try { setDraft({ ...initialDraft, ...JSON.parse(stored) as Partial<Draft> }); } catch { /* Ignore an unreadable local draft. */ }
+        try { setDraft({ ...initialDraft, ...JSON.parse(stored) as Partial<Draft>, consent: false }); } catch { setError("O rascunho salvo não pôde ser recuperado."); }
       }
-      if (mounted) setHydrated(true);
-    });
+      if (mounted) setHydrated(draftKey);
+    }).catch(() => { if (mounted) setError("Não foi possível abrir o rascunho neste aparelho."); });
     return () => { mounted = false; };
-  }, [cityId]);
+  }, [cityId, draftKey]);
   useEffect(() => {
-    if (!hydrated || !cityId) return;
-    void AsyncStorage.setItem(`city-eyes-report-draft-${cityId}`, JSON.stringify(draft));
-  }, [draft, hydrated, cityId]);
+    if (!draftKey || hydrated !== draftKey || success) return;
+    void AsyncStorage.setItem(draftKey, JSON.stringify({ ...draft, consent: false }))
+      .catch(() => setError("Não foi possível salvar o rascunho neste aparelho."));
+  }, [draft, hydrated, draftKey, success]);
 
   const update = (key: keyof Draft, value: string | boolean) => setDraft((current) => ({ ...current, [key]: value }));
   const selectPhoto = async (source: "camera" | "gallery") => {
@@ -112,22 +121,24 @@ export default function NewReportScreen() {
     }
   };
   const submit = async () => {
-    if (!cityId || !auth.user) { router.push("/auth"); return; }
+    if (!cityId || !auth.user || !draftKey || hydrated !== draftKey) { router.push("/auth"); return; }
     if (!draft.uri || !draft.consent || !draft.title.trim() || !draft.description.trim() || !draft.locationLabel.trim() || !Number.isFinite(Number(draft.latitude)) || !Number.isFinite(Number(draft.longitude))) {
       setError("Revise os campos obrigatórios, adicione uma foto e confirme a publicação.");
       return;
     }
     setBusy(true); setError("");
     try {
-      const draftKey = `city-eyes-report-draft-${cityId}`;
-      await AsyncStorage.setItem(draftKey, JSON.stringify(draft));
+      await AsyncStorage.setItem(draftKey, JSON.stringify({ ...draft, consent: false }));
+      if (!active.current) return;
       const file = new File(draft.uri);
       if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > 10 * 1024 * 1024) {
         throw new Error("Tamanho de foto inválido");
       }
       const upload = await requestUpload.mutateAsync({ data: { size: file.size, contentType: "image/jpeg" } });
+      if (!active.current) return;
       const response = await fetch(upload.uploadURL, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: file });
       if (!response.ok) throw new Error("Falha ao enviar a foto");
+      if (!active.current) return;
       const body: ReportInput = {
         title: draft.title.trim(), description: draft.description.trim(), category: draft.category,
         locationLabel: draft.locationLabel.trim(), latitude: Number(draft.latitude), longitude: Number(draft.longitude),
@@ -171,7 +182,7 @@ export default function NewReportScreen() {
         ) : null}
         {success ? (
           <Empty title="Relato enviado" description="O relato foi publicado no diretório desta cidade. Ele não foi encaminhado automaticamente à prefeitura." action={<Button testID="report-success-back" onPress={() => cityId ? router.replace({ pathname: "/city/[cityId]", params: { cityId } }) : router.replace("/")}>Voltar à cidade</Button>} />
-        ) : (
+        ) : auth.user && !auth.isLoading && hydrated === draftKey ? (
           <>
             <Card style={styles.fieldGroup}>
               <Typography variant="title">1. Foto do local</Typography>
@@ -220,7 +231,7 @@ export default function NewReportScreen() {
               <Button testID="report-submit" disabled={busy || auth.isLoading || !auth.user} onPress={() => void submit()}>{busy ? "Enviando…" : "Enviar relato"}</Button>
             </Card>
           </>
-        )}
+        ) : null}
       </KeyboardAwareScrollViewCompat>
     </Screen>
   );
