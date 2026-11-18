@@ -54,3 +54,11 @@ Thumbs.db
 .cache/
 .local/
 /generated-artifacts/
+
+# Workspace-only context; canonical documentation is a separate repository.
+/.agents/
+/.conversation/
+/attached_assets/
+/replit.md
+/docs
+/research
