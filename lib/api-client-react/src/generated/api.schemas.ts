@@ -9,6 +9,31 @@ export interface HealthStatus {
   status: string;
 }
 
+export type ReadinessStatusStatus = typeof ReadinessStatusStatus[keyof typeof ReadinessStatusStatus];
+
+
+export const ReadinessStatusStatus = {
+  ok: 'ok',
+  error: 'error',
+} as const;
+
+export type ReadinessStatusDependenciesDatabase = typeof ReadinessStatusDependenciesDatabase[keyof typeof ReadinessStatusDependenciesDatabase];
+
+
+export const ReadinessStatusDependenciesDatabase = {
+  ok: 'ok',
+  unavailable: 'unavailable',
+} as const;
+
+export type ReadinessStatusDependencies = {
+  database: ReadinessStatusDependenciesDatabase;
+};
+
+export interface ReadinessStatus {
+  status: ReadinessStatusStatus;
+  dependencies: ReadinessStatusDependencies;
+}
+
 export type CityId = typeof CityId[keyof typeof CityId];
 
 

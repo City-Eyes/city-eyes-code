@@ -26,6 +26,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /readyz:
+    get:
+      operationId: readinessCheck
+      tags: [health]
+      summary: Database readiness check
+      description: Reports whether the API can reach its database without exposing connection details.
+      responses:
+        "200":
+          description: API and database are ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+        "503":
+          description: Database dependency is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
   /cities:
     get:
       operationId: listCities
@@ -129,6 +148,20 @@ components:
           type: string
       required:
         - status
+    ReadinessStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+        dependencies:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [ok, unavailable]
+          required: [database]
+      required: [status, dependencies]
     City:
       type: object
       properties:

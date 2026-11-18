@@ -18,6 +18,18 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Reports whether the API can reach its database without exposing connection details.
+ * @summary Database readiness check
+ */
+export const ReadinessCheckResponse = zod.object({
+  "status": zod.enum(['ok', 'error']),
+  "dependencies": zod.object({
+  "database": zod.enum(['ok', 'unavailable'])
+})
+})
+
+
+/**
  * Returns the cities available in the CITY EYES demonstration.
  * @summary List supported cities
  */
