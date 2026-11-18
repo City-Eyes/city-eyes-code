@@ -44,6 +44,7 @@ jobs:
         run: pnpm --filter @workspace/api-server test
         env:
           DATABASE_TEST_URL: postgresql://cityeyes_test:cityeyes_test@localhost:5432/cityeyes_test
+          PRIVATE_OBJECT_DIR: /tmp/city-eyes-test-storage
       - name: Test mobile protected state
         run: pnpm --filter @workspace/city-eyes-mobile test
       - run: pnpm --filter @workspace/mockup-sandbox test
