@@ -62,3 +62,8 @@ Thumbs.db
 /replit.md
 /docs
 /research
+
+# Local environment variables
+.env
+.env.*
+!.env.example
