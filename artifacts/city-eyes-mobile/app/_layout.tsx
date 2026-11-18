@@ -34,6 +34,8 @@ function RootLayoutNav() {
       <Stack.Screen name="city/[cityId]" />
       <Stack.Screen name="city/[cityId]/report/[reportId]" />
       <Stack.Screen name="city/[cityId]/report/new" />
+      <Stack.Screen name="city/[cityId]/queue" />
+      <Stack.Screen name="city/[cityId]/queue/[reportId]" />
       <Stack.Screen name="auth" />
       <Stack.Screen name="+not-found" />
     </Stack>

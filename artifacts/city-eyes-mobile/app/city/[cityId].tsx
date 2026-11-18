@@ -107,6 +107,13 @@ export default function CityReportsScreen() {
               >
                 Fazer um relato
               </Button>
+              <Button
+                testID="city-operator-queue"
+                variant="outline"
+                onPress={() => router.push({ pathname: "/city/[cityId]/queue", params: { cityId } })}
+              >
+                Fila municipal
+              </Button>
             </View>
 
             <View style={styles.listHeading}>

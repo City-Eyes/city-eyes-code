@@ -10,7 +10,7 @@ Monorepo do CITY EYES. A aplicação Android/iOS usa Expo; o workspace contém c
 
 ## Estado técnico
 
-- Esta branch local acrescenta Replit Auth, envio autenticado de relatos com foto e localização revisável, e a API da fila municipal protegida. A tela mobile da fila será integrada em PR separado. Ainda não está publicada na `main`; a entrega será rastreada por PRs vinculados às issues.
+- Esta branch local acrescenta Replit Auth, envio autenticado de relatos com foto e localização revisável, e fila municipal protegida com paginação, filtros e atualização de status. Ainda não está publicada na `main`; a entrega será rastreada por PRs vinculados às issues.
 - Os uploads usam App Storage. O servidor confirma tipo, assinatura e tamanho do arquivo; fotos vinculadas a relatos são removidas após 30 dias. Imagens, texto e localização ficam públicos depois do consentimento explícito. Metadados da foto não são tratados como prova de autenticidade.
 - A autoria e a cidade autorizada são derivadas da sessão e dos vínculos no banco. A fila separa notas públicas de notas internas; nenhum operador é concedido automaticamente.
 - As quatro cidades usam caixas geográficas aproximadas derivadas das malhas municipais do IBGE. Elas não substituem limites municipais precisos.
