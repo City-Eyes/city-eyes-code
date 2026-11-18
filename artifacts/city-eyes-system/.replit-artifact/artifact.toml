@@ -1,0 +1,19 @@
+kind = "design-system"
+previewPath = "/city-eyes-system/"
+title = "CITY EYES — Design System"
+description = "Sistema visual do CITY EYES com paleta Participação comunitária, tipografia Nunito Sans como alternativa multiplataforma à Avenir Next, temas claro/escuro, tokens semânticos e prévia de componentes mobile."
+version = "1.0.0"
+id = "artifacts/city-eyes-system"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/city-eyes-system/" ]
+localPort = 19797
+
+[services.development]
+run = "pnpm --filter @workspace/city-eyes-system run dev"
+
+[services.env]
+PORT = "19797"
+BASE_PATH = "/city-eyes-system/"

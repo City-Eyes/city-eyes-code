@@ -1,0 +1,1589 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#f3f4ee" />
+    <title>CITY EYES — cidade em foco</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23155a46'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='sans-serif' font-size='34' font-weight='800' fill='%23d6eb74'%3ECE%3C/text%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        /* Serviço cívico claro — semantic design tokens */
+        --color-background: #f2f6f7;
+        --color-surface: #ffffff;
+        --color-text: #18333c;
+        --color-muted: #526b73;
+        --color-border: #cad9de;
+        --color-primary: #155b78;
+        --color-primary-surface: #dcebed;
+        --color-accent: #087e83;
+        --color-success: #246747;
+        --color-success-surface: #dcefe4;
+        --color-warning: #76520a;
+        --color-warning-surface: #f8ebc8;
+        --color-danger: #9a3f3a;
+        --color-danger-surface: #f8e3df;
+        --color-focus: #b94e18;
+        --color-neutral-surface: #e7eff1;
+        --color-map: #dcebe8;
+        --color-map-road: #f9fbf8;
+        --color-map-green: #b8d4c9;
+        --color-shadow: 24 51 60;
+        --font-body: "Segoe UI", "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+        --font-display: "Segoe UI", "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+        --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        --type-xs: 10px;
+        --type-sm: 12px;
+        --type-base: 14px;
+        --type-title: 25px;
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 20px;
+        --space-6: 24px;
+        --space-8: 32px;
+        --radius-sm: 8px;
+        --radius-control: 10px;
+        --radius-card: 14px;
+        --radius-panel: 16px;
+        --radius-feature: 20px;
+        --radius-pill: 999px;
+        --elevation-card: 0 2px 7px rgb(var(--color-shadow) / 7%);
+        --elevation-dialog: 0 15px 40px rgb(var(--color-shadow) / 14%);
+        /* Legacy names retained as aliases so the original interactions stay intact. */
+        --paper: var(--color-background);
+        --surface: var(--color-surface);
+        --ink: var(--color-text);
+        --muted: var(--color-muted);
+        --line: var(--color-border);
+        --green: var(--color-primary);
+        --green2: var(--color-primary-surface);
+        --lime: #d7eeeb;
+        --orange: var(--color-focus);
+        --sand: var(--color-neutral-surface);
+        --shadow: var(--elevation-dialog);
+        --display: var(--font-body);
+        --mono: var(--font-mono);
+      }
+      :root.dark {
+        color-scheme: dark;
+        --color-background: #142a33;
+        --color-surface: #1e3943;
+        --color-text: #e8f1f2;
+        --color-muted: #b1c5ca;
+        --color-border: #3c5963;
+        --color-primary: #83c8dd;
+        --color-primary-surface: #294b54;
+        --color-accent: #72d2ca;
+        --color-success: #9bd4ae;
+        --color-success-surface: #294c3d;
+        --color-warning: #f0d58c;
+        --color-warning-surface: #4c4229;
+        --color-danger: #f0aaa0;
+        --color-danger-surface: #533432;
+        --color-focus: #ffc49d;
+        --color-neutral-surface: #29444e;
+        --color-map: #304e52;
+        --color-map-road: #3d5d60;
+        --color-map-green: #41685d;
+        --color-shadow: 0 0 0;
+        --green2: #294b54;
+        --lime: #163a42;
+        --sand: var(--color-neutral-surface);
+        --elevation-card: 0 2px 7px rgb(0 0 0 / 16%);
+        --elevation-dialog: 0 15px 40px rgb(0 0 0 / 30%);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--display);
+        font-size: 14px;
+        min-height: 100dvh;
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+      button {
+        color: inherit;
+        cursor: pointer;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      textarea:focus-visible {
+        outline: 3px solid #c4663c;
+        outline-offset: 2px;
+      }
+      #app {
+        max-width: 520px;
+        min-height: 100dvh;
+        margin: 0 auto;
+        background: var(--paper);
+        position: relative;
+        padding-bottom: calc(84px + env(safe-area-inset-bottom));
+        overflow: hidden;
+      }
+      .topbar {
+        height: 68px;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+      }
+      .brand {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 11px;
+        background: var(--green);
+        color: var(--lime);
+        display: grid;
+        place-items: center;
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: -2px;
+      }
+      .brand-name {
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+      }
+      .brand-sub {
+        font: 10px var(--mono);
+        color: var(--muted);
+        letter-spacing: 0.04em;
+      }
+      .icon-btn {
+        width: 38px;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: transparent;
+        font-size: 17px;
+      }
+      .content {
+        padding: 20px 18px 24px;
+      }
+      .eyebrow {
+        font: 10px var(--mono);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+      h1 {
+        font-size: 25px;
+        line-height: 1.1;
+        letter-spacing: -0.055em;
+        margin: 7px 0 5px;
+      }
+      h2 {
+        font-size: 21px;
+        letter-spacing: -0.045em;
+        margin: 4px 0 8px;
+      }
+      h3 {
+        font-size: 14px;
+        margin: 0 0 4px;
+      }
+      .intro {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.5;
+        margin-bottom: 18px;
+      }
+      .city-wrap {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 16px;
+      }
+      .city-label {
+        font: 10px var(--mono);
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .city-select {
+        flex: 1;
+        min-width: 0;
+        padding: 11px 35px 11px 12px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        border-radius: 12px;
+        font-weight: 700;
+        appearance: none;
+        background-image:
+          linear-gradient(45deg, transparent 50%, var(--green) 50%),
+          linear-gradient(135deg, var(--green) 50%, transparent 50%);
+        background-position:
+          calc(100% - 17px) 16px,
+          calc(100% - 12px) 16px;
+        background-size: 5px 5px;
+        background-repeat: no-repeat;
+      }
+      .control-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 0 9px;
+      }
+      .toggle {
+        display: flex;
+        background: var(--sand);
+        padding: 3px;
+        border-radius: 10px;
+        gap: 3px;
+      }
+      .toggle button {
+        border: 0;
+        background: transparent;
+        padding: 7px 10px;
+        border-radius: 8px;
+        color: var(--muted);
+        font-weight: 700;
+        font-size: 11px;
+      }
+      .toggle button.active {
+        background: var(--surface);
+        color: var(--ink);
+        box-shadow: 0 2px 6px #18362f12;
+      }
+      .demo-chip,
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 8px;
+        border-radius: 99px;
+        background: var(--green2);
+        color: var(--green);
+        font: 10px var(--mono);
+      }
+      .map {
+        height: 226px;
+        border-radius: 18px;
+        position: relative;
+        overflow: hidden;
+        background: #dfe7d7;
+        border: 1px solid #ced9cb;
+        isolation: isolate;
+      }
+      .dark .map {
+        background: #34493d;
+        border-color: #476054;
+      }
+      .map:before,
+      .map:after {
+        content: "";
+        position: absolute;
+        inset: -20%;
+        z-index: -1;
+        background: repeating-linear-gradient(
+          24deg,
+          transparent 0 34px,
+          #fbf8e7 35px 43px,
+          transparent 44px 72px
+        );
+        transform: rotate(-12deg);
+        opacity: 0.86;
+      }
+      .map:after {
+        background: repeating-linear-gradient(
+          112deg,
+          transparent 0 49px,
+          #b4ccb5 50px 53px,
+          transparent 54px 87px
+        );
+        opacity: 0.75;
+        transform: rotate(8deg);
+      }
+      .map-grid {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse at 25% 68%, #a6c4a366 0 9%, transparent 10%),
+          radial-gradient(ellipse at 79% 23%, #a6c4a366 0 12%, transparent 13%);
+      }
+      .map-label {
+        position: absolute;
+        left: 13px;
+        top: 12px;
+        background: var(--surface);
+        padding: 6px 8px;
+        border-radius: 7px;
+        font: 9px var(--mono);
+        color: var(--muted);
+      }
+      .map-note {
+        position: absolute;
+        right: 10px;
+        bottom: 9px;
+        font: 8px var(--mono);
+        color: #4c6254;
+        background: #f4f3e8d9;
+        padding: 5px 7px;
+        border-radius: 6px;
+      }
+      .pin {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        border: 2px solid var(--surface);
+        border-radius: 50% 50% 50% 4px;
+        transform: rotate(-45deg);
+        background: var(--green);
+        color: #fff;
+        box-shadow: 0 3px 9px #18362f44;
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+      }
+      .pin span {
+        transform: rotate(45deg);
+      }
+      .pin.selected {
+        background: var(--orange);
+        z-index: 2;
+      }
+      .pin:focus-visible {
+        outline: 3px solid var(--orange);
+      }
+      .map.selectable .pin {
+        cursor: crosshair;
+      }
+      .map.selectable {
+        cursor: crosshair;
+      }
+      .list-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 17px 1px 9px;
+      }
+      .list-head h3 {
+        margin: 0;
+      }
+      .text-btn {
+        border: 0;
+        background: none;
+        color: var(--green);
+        font-weight: 800;
+        font-size: 11px;
+        padding: 8px;
+      }
+      .reports {
+        display: grid;
+        gap: 8px;
+      }
+      .report {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        text-align: left;
+        width: 100%;
+        box-shadow: 0 2px 6px #18362f08;
+      }
+      .report:hover {
+        border-color: var(--green);
+      }
+      .report-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: var(--sand);
+        display: grid;
+        place-items: center;
+        color: var(--green);
+        font-weight: 800;
+        flex: none;
+      }
+      .report-main {
+        flex: 1;
+        min-width: 0;
+      }
+      .report-title {
+        font-size: 12px;
+        font-weight: 800;
+        display: block;
+      }
+      .report-meta {
+        font: 9px var(--mono);
+        color: var(--muted);
+        display: block;
+        margin-top: 5px;
+      }
+      .report-side {
+        text-align: right;
+        display: grid;
+        gap: 7px;
+        justify-items: end;
+      }
+      .status {
+        font-size: 9px;
+        padding: 4px 7px;
+      }
+      .status.review {
+        color: #86522e;
+        background: #f4e3d2;
+      }
+      .status.done {
+        color: #476c53;
+        background: #e4edda;
+      }
+      .bottom-nav {
+        position: fixed;
+        z-index: 5;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(520px, 100%);
+        height: calc(70px + env(safe-area-inset-bottom));
+        padding: 8px 10px env(safe-area-inset-bottom);
+        display: flex;
+        justify-content: space-around;
+        background: var(--surface);
+        border-top: 1px solid var(--line);
+      }
+      .nav-item {
+        border: 0;
+        background: none;
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 700;
+        display: grid;
+        place-items: center;
+        gap: 3px;
+        min-width: 56px;
+      }
+      .nav-item span:first-child {
+        font-size: 18px;
+        line-height: 1;
+      }
+      .nav-item.active {
+        color: var(--green);
+      }
+      .primary,
+      .secondary,
+      .danger {
+        border: 0;
+        border-radius: 12px;
+        padding: 13px 16px;
+        font-weight: 800;
+      }
+      .primary {
+        background: var(--green);
+        color: #f6f7ec;
+        width: 100%;
+      }
+      .dark .primary {
+        color: #14231f;
+      }
+      .secondary {
+        background: var(--green2);
+        color: var(--green);
+        width: 100%;
+      }
+      .danger {
+        background: #f7e4dc;
+        color: #8a4127;
+        width: 100%;
+      }
+      .back {
+        border: 0;
+        background: none;
+        color: var(--green);
+        font-weight: 800;
+        padding: 6px 0 12px;
+      }
+      .panel {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: 16px;
+        padding: 15px;
+        margin: 12px 0;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .detail-hero {
+        padding: 16px;
+        background: var(--green);
+        color: #f1f5e9;
+        border-radius: 18px;
+        margin: 7px 0 13px;
+      }
+      .detail-hero .eyebrow {
+        color: #c4daca;
+      }
+      .detail-hero h2 {
+        margin: 9px 0;
+      }
+      .detail-meta {
+        font: 10px var(--mono);
+        color: #cee0d1;
+      }
+      .timeline {
+        border-left: 1px solid var(--line);
+        margin: 15px 0 0 5px;
+        padding-left: 16px;
+        display: grid;
+        gap: 14px;
+      }
+      .event {
+        position: relative;
+      }
+      .event:before {
+        content: "";
+        position: absolute;
+        left: -21px;
+        top: 3px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+      .event strong {
+        font-size: 11px;
+      }
+      .event small {
+        display: block;
+        color: var(--muted);
+        font: 9px var(--mono);
+        margin-top: 3px;
+      }
+      .form-grid {
+        display: grid;
+        gap: 13px;
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field label {
+        font-weight: 800;
+        font-size: 11px;
+      }
+      .field input,
+      .field select,
+      .field textarea {
+        width: 100%;
+        border-radius: 11px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        padding: 12px;
+      }
+      .field textarea {
+        min-height: 86px;
+        resize: vertical;
+      }
+      .radio-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .source-btn {
+        border: 1px solid var(--line);
+        background: var(--surface);
+        border-radius: 11px;
+        padding: 11px;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .source-btn small {
+        display: block;
+        color: var(--muted);
+        font-weight: 500;
+        margin-top: 4px;
+      }
+      .file-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        clip: rect(0, 0, 0, 0);
+        overflow: hidden;
+      }
+      .image-preview {
+        max-width: 100%;
+        max-height: 180px;
+        border-radius: 12px;
+        object-fit: cover;
+      }
+      .point-hint {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        font-weight: 700;
+        margin: 10px 0;
+      }
+      .receipt {
+        border: 1px dashed var(--green);
+        border-radius: 16px;
+        padding: 16px;
+        background: var(--green2);
+        margin: 14px 0;
+      }
+      .receipt-code {
+        font: 20px var(--mono);
+        font-weight: 500;
+        letter-spacing: 0.05em;
+      }
+      .warning {
+        padding: 11px 12px;
+        border-radius: 11px;
+        background: #f4e9d9;
+        color: #704c2c;
+        font-size: 10px;
+        line-height: 1.5;
+      }
+      .dark .warning {
+        background: #493b2e;
+        color: #f0cfaa;
+      }
+      .tabs {
+        display: flex;
+        overflow: auto;
+        gap: 6px;
+        padding-bottom: 3px;
+        margin-bottom: 12px;
+      }
+      .tab {
+        white-space: nowrap;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 99px;
+        padding: 8px 10px;
+        font-size: 10px;
+        font-weight: 800;
+      }
+      .tab.active {
+        background: var(--green);
+        border-color: var(--green);
+        color: #f3f6ed;
+      }
+      .empty {
+        padding: 23px 16px;
+        text-align: center;
+        background: var(--surface);
+        border: 1px dashed var(--line);
+        border-radius: 16px;
+      }
+      .empty b {
+        display: block;
+        margin: 7px;
+      }
+      .empty p {
+        font-size: 11px;
+        color: var(--muted);
+        margin: 0;
+      }
+      .overlay {
+        position: fixed;
+        z-index: 10;
+        inset: 0;
+        background: #10251f99;
+        display: grid;
+        align-items: end;
+        justify-items: center;
+        padding: 12px;
+      }
+      .dialog {
+        width: min(100%, 490px);
+        background: var(--surface);
+        border-radius: 20px;
+        padding: 21px 19px calc(22px + env(safe-area-inset-bottom));
+        box-shadow: var(--shadow);
+      }
+      .dialog h2 {
+        font-size: 20px;
+      }
+      .dialog-actions {
+        display: grid;
+        gap: 8px;
+        margin-top: 17px;
+      }
+      .dialog-close {
+        float: right;
+        border: 0;
+        background: var(--sand);
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+      }
+      .toast {
+        position: fixed;
+        z-index: 20;
+        left: 50%;
+        bottom: 92px;
+        transform: translateX(-50%);
+        background: var(--ink);
+        color: var(--surface);
+        padding: 11px 14px;
+        border-radius: 12px;
+        font-size: 11px;
+        box-shadow: var(--shadow);
+        max-width: calc(100% - 30px);
+      }
+      .section-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .small-mono {
+        font: 9px var(--mono);
+        color: var(--muted);
+      }
+      .hide {
+        display: none !important;
+      }
+      @media (max-width: 360px) {
+        .content {
+          padding: 17px 14px;
+        }
+        .topbar {
+          padding: 0 15px;
+        }
+        .map {
+          height: 205px;
+        }
+        .report {
+          padding: 10px;
+          gap: 7px;
+        }
+        .report-side .status {
+          font-size: 8px;
+        }
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .content {
+          animation: arrive 0.28s ease-out;
+        }
+        @keyframes arrive {
+          from {
+            opacity: 0.75;
+            transform: translateY(5px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      }
+      /* Variant treatment: civic-service clarity, with status and action always legible. */
+      body {
+        font-family: var(--font-body);
+        font-size: var(--type-base);
+        line-height: 1.45;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      textarea:focus-visible,
+      .map.selectable:focus-visible {
+        outline: 3px solid var(--color-focus);
+        outline-offset: 3px;
+      }
+      .topbar {
+        background: var(--color-surface);
+        border-color: var(--color-border);
+      }
+      .mark {
+        border-radius: var(--radius-control);
+        background: var(--color-primary);
+        color: var(--color-surface);
+        letter-spacing: -1px;
+      }
+      .brand-name {
+        letter-spacing: 0.075em;
+      }
+      .brand-sub {
+        font-family: var(--font-mono);
+      }
+      .icon-btn {
+        border-radius: var(--radius-control);
+        border-color: var(--color-border);
+        color: var(--color-primary);
+      }
+      .content {
+        padding: var(--space-5) 18px var(--space-6);
+      }
+      .eyebrow,
+      .city-label,
+      .small-mono,
+      .report-meta,
+      .detail-meta,
+      .event small,
+      .brand-sub {
+        font-family: var(--font-mono);
+      }
+      h1 {
+        font-size: var(--type-title);
+        line-height: 1.13;
+        letter-spacing: -0.04em;
+        font-weight: 720;
+      }
+      h2 {
+        letter-spacing: -0.035em;
+      }
+      .intro {
+        font-size: var(--type-sm);
+        line-height: 1.55;
+      }
+      .city-wrap {
+        gap: var(--space-2);
+      }
+      .city-select,
+      .field input,
+      .field select,
+      .field textarea {
+        border-color: var(--color-border);
+        border-radius: var(--radius-control);
+      }
+      .city-select {
+        background-color: var(--color-surface);
+        background-image:
+          linear-gradient(45deg, transparent 50%, var(--color-primary) 50%),
+          linear-gradient(135deg, var(--color-primary) 50%, transparent 50%);
+      }
+      .toggle {
+        background: var(--color-neutral-surface);
+        border-radius: var(--radius-control);
+      }
+      .toggle button,
+      .tab,
+      .primary,
+      .secondary,
+      .danger,
+      .source-btn {
+        border-radius: var(--radius-control);
+      }
+      .toggle button.active {
+        color: var(--color-primary);
+        box-shadow: var(--elevation-card);
+      }
+      .demo-chip {
+        border-radius: var(--radius-pill);
+        color: var(--color-primary);
+        background: var(--color-primary-surface);
+        font-size: 9px;
+        letter-spacing: 0.035em;
+      }
+      :root.dark .demo-chip {
+        background: var(--color-primary-surface);
+      }
+      .map {
+        background: var(--color-map);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-panel);
+      }
+      .map:before {
+        background: repeating-linear-gradient(
+          24deg,
+          transparent 0 34px,
+          var(--color-map-road) 35px 43px,
+          transparent 44px 72px
+        );
+      }
+      .map:after {
+        background: repeating-linear-gradient(
+          112deg,
+          transparent 0 49px,
+          var(--color-map-green) 50px 53px,
+          transparent 54px 87px
+        );
+      }
+      .map-grid {
+        background:
+          radial-gradient(ellipse at 25% 68%, color-mix(in srgb, var(--color-map-green) 65%, transparent) 0 9%, transparent 10%),
+          radial-gradient(ellipse at 79% 23%, color-mix(in srgb, var(--color-map-green) 65%, transparent) 0 12%, transparent 13%);
+      }
+      .map-label,
+      .map-note {
+        color: var(--color-text);
+        background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+      }
+      .pin {
+        background: var(--color-primary);
+        box-shadow: var(--elevation-card);
+      }
+      .pin.selected {
+        background: var(--color-accent);
+      }
+      .pin:focus-visible {
+        outline: 3px solid var(--color-focus);
+        outline-offset: 3px;
+      }
+      .text-btn,
+      .back {
+        color: var(--color-primary);
+      }
+      .report,
+      .panel,
+      .empty {
+        border-color: var(--color-border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--elevation-card);
+      }
+      .report {
+        padding: var(--space-3);
+        gap: var(--space-3);
+      }
+      .panel {
+        padding: var(--space-4);
+        margin: var(--space-3) 0;
+      }
+      .form-grid,
+      .tabs {
+        gap: var(--space-3);
+      }
+      .field {
+        gap: var(--space-2);
+      }
+      .report:hover {
+        border-color: var(--color-primary);
+      }
+      .report-icon {
+        border-radius: var(--radius-control);
+        color: var(--color-primary);
+        background: var(--color-neutral-surface);
+      }
+      .status {
+        border-radius: var(--radius-pill);
+        color: var(--color-primary);
+        background: var(--color-primary-surface);
+      }
+      .status.review {
+        color: var(--color-warning);
+        background: var(--color-warning-surface);
+      }
+      .status.done {
+        color: var(--color-success);
+        background: var(--color-success-surface);
+      }
+      .bottom-nav {
+        background: var(--color-surface);
+        border-color: var(--color-border);
+      }
+      .nav-item.active {
+        color: var(--color-primary);
+      }
+      .primary {
+        color: #fff;
+        background: var(--color-primary);
+      }
+      :root.dark .primary {
+        color: #142a33;
+      }
+      .secondary {
+        color: var(--color-primary);
+        background: var(--color-primary-surface);
+      }
+      :root.dark .secondary {
+        background: var(--color-primary-surface);
+      }
+      .danger {
+        color: var(--color-danger);
+        background: var(--color-danger-surface);
+      }
+      .detail-hero {
+        color: #fff;
+        background: var(--color-primary);
+        border-radius: var(--radius-feature);
+      }
+      .detail-hero .eyebrow,
+      .detail-meta {
+        color: #dcebed;
+      }
+      .event:before {
+        background: var(--color-accent);
+      }
+      .source-btn {
+        border-color: var(--color-border);
+      }
+      .receipt {
+        border-color: var(--color-accent);
+        background: #e1f0ef;
+        border-radius: var(--radius-panel);
+      }
+      :root.dark .receipt {
+        background: #294b54;
+      }
+      .warning {
+        color: var(--color-warning);
+        background: var(--color-warning-surface);
+        border-radius: var(--radius-control);
+      }
+      :root.dark .warning {
+        color: var(--color-warning);
+        background: var(--color-warning-surface);
+      }
+      :root.dark .map {
+        background: var(--color-map);
+        border-color: var(--color-border);
+      }
+      .tabs {
+        scrollbar-width: thin;
+      }
+      .tab {
+        border-color: var(--color-border);
+      }
+      .tab.active {
+        color: #fff;
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+      }
+      :root.dark .tab.active {
+        color: #142a33;
+      }
+      .overlay {
+        background: rgb(20 42 51 / 62%);
+      }
+      .dialog {
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-feature);
+        box-shadow: var(--elevation-dialog);
+      }
+      .dialog-close {
+        color: var(--color-primary);
+        background: var(--color-neutral-surface);
+      }
+      .toast {
+        color: var(--color-surface);
+        background: var(--color-text);
+      }
+      .variant-tag {
+        display: inline-block;
+        margin-left: 5px;
+        padding: 2px 5px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-pill);
+        color: var(--color-muted);
+        font: 9px/1.3 var(--font-mono);
+        letter-spacing: 0;
+        white-space: nowrap;
+      }
+      @media (max-width: 390px) {
+        .content {
+          padding-right: 16px;
+          padding-left: 16px;
+        }
+        .brand-sub {
+          font-size: 9px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" aria-live="off"></div>
+    <script>
+      (() => {
+        const cities = [
+          {
+            id: "curitiba",
+            name: "Curitiba",
+            center: "Centro cívico ilustrativo",
+            areas: ["Centro", "Água Verde", "Batel", "Juvevê"],
+          },
+          {
+            id: "londrina",
+            name: "Londrina",
+            center: "Eixo central ilustrativo",
+            areas: [
+              "Centro",
+              "Gleba Palhano",
+              "Vila Ipiranga",
+              "Jardim Quebec",
+            ],
+          },
+          {
+            id: "maringa",
+            name: "Maringá",
+            center: "Zona central ilustrativa",
+            areas: ["Zona 01", "Zona 07", "Vila Operária", "Zona 05"],
+          },
+          {
+            id: "ponta-grossa",
+            name: "Ponta Grossa",
+            center: "Centro ilustrativo",
+            areas: ["Centro", "Uvaranas", "Nova Rússia", "Oficinas"],
+          },
+        ];
+        const categories = {
+          pavimento: { name: "Calçada ou pavimento", icon: "P" },
+          iluminacao: { name: "Iluminação pública", icon: "L" },
+          drenagem: { name: "Drenagem", icon: "D" },
+          acessibilidade: { name: "Acessibilidade", icon: "A" },
+          sinalizacao: { name: "Sinalização", icon: "S" },
+        };
+        let records = [];
+        cities.forEach((c, ci) =>
+          [
+            ["pavimento", "Desnível na calçada", "Recebido", 1, 21, 65],
+            ["iluminacao", "Luminária apagada", "Em análise", 2, 54, 28],
+            ["drenagem", "Boca de lobo obstruída", "Encaminhado", 3, 74, 70],
+            [
+              "acessibilidade",
+              "Rampa com passagem bloqueada",
+              "Recebido",
+              0,
+              36,
+              45,
+            ],
+          ].forEach((r, i) =>
+            records.push({
+              id: `DEMO-${String(ci * 4 + i + 1).padStart(3, "0")}`,
+              city: c.id,
+              category: r[0],
+              title: r[1],
+              status: r[2],
+              area: c.areas[r[3]],
+              x: r[4],
+              y: r[5],
+              description: `Registro demonstrativo de ${r[1].toLowerCase()} próximo a ${c.areas[r[3]]}. Localização e relato são fictícios e servem apenas para navegar pelo protótipo.`,
+              created: "Hoje, 09:4" + i,
+              history: [
+                {
+                  status: r[2],
+                  note: "Registro demonstrativo incluído na fila pública.",
+                  date: "Hoje, 09:4" + i,
+                },
+              ],
+            }),
+          ),
+        );
+        let state = {
+          city:
+            cities.find(
+              (c) =>
+                c.id === new URLSearchParams(location.search).get("cidade"),
+            )?.id || "curitiba",
+          view: new URLSearchParams(location.search).get("estado") || "mapa",
+          theme: new URLSearchParams(location.search).get("tema") === "escuro",
+          selected: null,
+          mapMode: "mapa",
+          filter: "Todos",
+          form: {
+            category: "pavimento",
+            description: "",
+            image: null,
+            imageSource: "",
+            x: 50,
+            y: 50,
+          },
+          operatorFilter: "Todos",
+          pendingAction: null,
+        };
+        if (state.view === "detalhe")
+          state.selected =
+            records.find((r) => r.city === state.city)?.id || null;
+        const app = document.getElementById("app");
+        if (state.theme) document.documentElement.classList.add("dark");
+        function urlState() {
+          const p = new URLSearchParams();
+          p.set("cidade", state.city);
+          p.set("estado", state.view);
+          if (state.theme) p.set("tema", "escuro");
+          history.replaceState({}, "", location.pathname + "?" + p.toString());
+        }
+        function city() {
+          return cities.find((c) => c.id === state.city);
+        }
+        function cityRecords() {
+          return records.filter((r) => r.city === state.city);
+        }
+        function selected() {
+          return records.find((r) => r.id === state.selected);
+        }
+        function esc(s) {
+          return String(s).replace(
+            /[&<>"']/g,
+            (c) =>
+              ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;",
+              })[c],
+          );
+        }
+        function header() {
+          return `<header class="topbar"><div class="brand"><div class="mark" aria-hidden="true">CE</div><div><div class="brand-name">CITY EYES</div><div class="brand-sub">cidade em foco · demonstração <span class="variant-tag">direção em avaliação</span></div></div></div><button class="icon-btn" id="themeBtn" aria-label="${state.theme ? "Ativar tema claro" : "Ativar tema escuro"}">${state.theme ? "☼" : "◐"}</button></header>`;
+        }
+        function nav() {
+          return `<nav class="bottom-nav" aria-label="Navegação principal"><button class="nav-item ${state.view === "mapa" ? "active" : ""}" data-view="mapa"><span>⌖</span><span>Explorar</span></button><button class="nav-item ${state.view === "denuncia" ? "active" : ""}" data-view="denuncia"><span>＋</span><span>Relatar</span></button><button class="nav-item ${state.view === "operacao" ? "active" : ""}" data-view="operacao"><span>▤</span><span>Fila municipal</span></button></nav>`;
+        }
+        function citySelector() {
+          return `<div class="city-wrap"><span class="city-label">CIDADE</span><select class="city-select" id="citySelect" aria-label="Selecionar cidade">${cities.map((c) => `<option value="${c.id}" ${state.city === c.id ? "selected" : ""}>${c.name}</option>`).join("")}</select></div>`;
+        }
+        function mapMarkup(selectable = false) {
+          const rs = cityRecords();
+          return `<div class="map ${selectable ? "selectable" : ""}" id="${selectable ? "pinMap" : "reportMap"}" role="${selectable ? "application" : "img"}" ${selectable ? 'tabindex="0"' : ""} aria-label="${selectable ? "Mapa esquemático ilustrativo. Toque para escolher um ponto; use as setas do teclado para mover o ponto." : "Mapa esquemático demonstrativo; os pontos não são endereços reais."}"><div class="map-grid"></div><span class="map-label">${esc(city().center)}</span>${selectable ? "" : rs.map((r) => `<button class="pin ${state.selected === r.id ? "selected" : ""}" style="left:${r.x}%;top:${r.y}%" data-report="${r.id}" aria-label="Abrir relato demonstrativo ${esc(r.title)}"><span>${categories[r.category].icon}</span></button>`).join("")}${selectable ? `<button class="pin selected" id="chosenPin" style="left:${state.form.x}%;top:${state.form.y}%;pointer-events:none" aria-label="Ponto ilustrativo selecionado"><span>+</span></button>` : ""}<span class="map-note">MAPA ESQUEMÁTICO · SEM ESCALA</span></div>`;
+        }
+        function statusClass(s) {
+          return s === "Concluído"
+            ? "done"
+            : s === "Em análise" || s === "Em triagem"
+              ? "review"
+              : "";
+        }
+        function reportCard(r) {
+          return `<button class="report" data-report="${r.id}"><span class="report-icon">${categories[r.category].icon}</span><span class="report-main"><span class="report-title">${esc(r.title)}</span><span class="report-meta">${esc(r.area)} · ${esc(r.created)} · ${r.id}</span></span><span class="report-side"><span class="status ${statusClass(r.status)}">${esc(r.status)}</span><span class="small-mono">›</span></span></button>`;
+        }
+        function mapPage() {
+          let rs = cityRecords();
+          if (state.filter !== "Todos")
+            rs = rs.filter((r) => r.status === state.filter);
+          return `<main class="content"><div class="eyebrow">OLHOS ABERTOS PARA A CIDADE</div><h1>O que precisa de atenção?</h1><p class="intro">Acompanhe relatos demonstrativos e veja como uma fila pública pode organizar prioridades urbanas.</p>${citySelector()}<div class="control-row"><span class="demo-chip">DADOS DE DEMONSTRAÇÃO</span><div class="toggle"><button class="${state.mapMode === "mapa" ? "active" : ""}" data-mode="mapa">Mapa</button><button class="${state.mapMode === "lista" ? "active" : ""}" data-mode="lista">Lista</button></div></div>${state.mapMode === "mapa" ? mapMarkup() : ""}<div class="list-head"><h3>Relatos nesta cidade</h3><span class="small-mono">${rs.length} exemplos</span></div><div class="tabs">${["Todos", "Recebido", "Em análise", "Encaminhado", "Concluído"].map((f) => `<button class="tab ${state.filter === f ? "active" : ""}" data-filter="${f}">${f}</button>`).join("")}</div>${rs.length ? `<div class="reports">${rs.map(reportCard).join("")}</div>` : `<div class="empty"><div class="report-icon" style="margin:auto">⌖</div><b>Nenhum relato nesta seleção</b><p>Experimente outro filtro ou escolha uma cidade diferente.</p></div>`}</main>`;
+        }
+        function detailPage() {
+          let r = selected();
+          if (!r)
+            return `<main class="content"><button class="back" data-view="mapa">← Voltar aos relatos</button><div class="empty"><b>Relato não encontrado</b><p>Este exemplo pode ter sido removido da sessão.</p></div></main>`;
+          return `<main class="content"><button class="back" data-view="mapa">← Explorar relatos</button><div class="eyebrow">RELATO PÚBLICO · DEMONSTRAÇÃO</div><section class="detail-hero"><span class="eyebrow">${esc(city().name)} · ${esc(r.area)}</span><h2>${esc(r.title)}</h2><span class="detail-meta">${r.id}　·　${esc(r.created)}</span></section><span class="status ${statusClass(r.status)}">${esc(r.status)}</span><div class="panel"><h3>Sobre este exemplo</h3><p class="muted">${esc(r.description)}</p><p class="small-mono">Categoria: ${esc(categories[r.category].name)} · Ponto e ocorrência fictícios</p></div><div class="panel"><div class="section-title"><h3>Histórico público</h3><span class="small-mono">${r.history.length} atualizações</span></div><div class="timeline">${[
+            ...r.history,
+          ]
+            .reverse()
+            .map(
+              (h) =>
+                `<div class="event"><strong>${esc(h.status)}</strong><div class="muted">${esc(h.note)}</div><small>${esc(h.date)} · ação demonstrativa</small></div>`,
+            )
+            .join(
+              "",
+            )}</div></div><button class="primary" id="confirmBtn">Confirmar que continua ativo</button><p class="muted" style="text-align:center;margin:9px 0 0">A confirmação é uma ação simulada; não será enviada a um município.</p></main>`;
+        }
+        function reportPage() {
+          if (state.receipt)
+            return `<main class="content"><div class="eyebrow">RELATO ENVIADO · SIMULAÇÃO</div><h1>Obrigado por olhar de perto.</h1><div class="receipt"><span class="small-mono">PROTOCOLO DEMONSTRATIVO</span><div class="receipt-code">${state.receipt}</div><p class="muted" style="margin:8px 0 0">Seu exemplo foi adicionado à fila desta sessão.</p></div><div class="panel"><h3>Revisão da imagem</h3><span class="status review">Aguardando revisão demonstrativa</span><p class="muted" style="margin:10px 0 0">A etiqueta de origem e qualquer sugestão de IA não comprovam autenticidade. A IA aqui é uma sugestão simulada de triagem, não um veredito de autenticidade. Nenhuma imagem é rejeitada automaticamente, inclusive imagens geradas por IA.</p></div><button class="primary" id="receiptExplore">Ver relato</button><button class="text-btn" id="newReport" style="width:100%;margin-top:7px">Criar outro exemplo</button></main>`;
+          return `<main class="content"><button class="back" data-view="mapa">← Cancelar e voltar</button><div class="eyebrow">CONTRIBUIÇÃO CIDADÃ · DEMONSTRAÇÃO</div><h1>Conte o que você percebeu.</h1><p class="intro">Um relato curto ajuda a organizar uma conversa pública sobre prioridades.</p>${citySelector()}<div class="form-grid"><div class="field"><label for="category">Categoria</label><select id="category">${Object.entries(
+            categories,
+          )
+            .map(
+              ([id, c]) =>
+                `<option value="${id}" ${state.form.category === id ? "selected" : ""}>${c.name}</option>`,
+            )
+            .join(
+              "",
+            )}</select></div><div class="field"><label for="description">O que está acontecendo?</label><textarea id="description" maxlength="220" placeholder="Descreva o ponto e o impacto observado. Evite incluir dados pessoais.">${esc(state.form.description)}</textarea><span class="small-mono" id="charCount">${state.form.description.length}/220</span></div><div class="field"><label>Imagem (opcional)</label><div class="radio-row"><label class="source-btn" for="cameraInput">Usar câmera<small>Captura, se disponível no navegador</small></label><input class="file-input" id="cameraInput" type="file" accept="image/*" capture="environment"><label class="source-btn" for="galleryInput">Escolher da galeria<small>Selecionar arquivo de imagem</small></label><input class="file-input" id="galleryInput" type="file" accept="image/*"></div><div id="imageBox">${state.form.image ? `<img class="image-preview" src="${state.form.image}" alt="Prévia da imagem selecionada"><div class="small-mono" style="margin-top:5px">Origem declarada: ${esc(state.form.imageSource)} · não verificada</div>` : ""}</div></div><div class="field"><div class="section-title"><label>Marque um ponto aproximado</label><span class="small-mono">LOCAL ILUSTRATIVO</span></div><p class="muted" style="margin:0">Toque no mapa para posicionar. Não pedimos acesso à sua localização.</p>${mapMarkup(true)}<div class="point-hint"><span>Ponto manual selecionado</span><span class="small-mono">${Math.round(state.form.x)}%, ${Math.round(state.form.y)}%</span></div></div><div class="warning">Protótipo sem envio real. Relatos, pontos, imagens e análise são demonstrações. Não compartilhe informações pessoais.</div><button class="primary" id="publishBtn">Revisar e publicar exemplo</button></div></main>`;
+        }
+        function operatorPage() {
+          let rs = cityRecords();
+          if (state.operatorFilter !== "Todos")
+            rs = rs.filter((r) => r.status === state.operatorFilter);
+          return `<main class="content"><div class="eyebrow">ESPAÇO DE OPERAÇÃO · DEMONSTRAÇÃO</div><h1>Fila municipal</h1><p class="intro">Acesso de operador simulado. Todos os registros abaixo são exemplos; não há autenticação nem conexão com uma prefeitura.</p>${citySelector()}<div class="panel"><div class="section-title"><h3>Fila de ${esc(city().name)}</h3><span class="demo-chip">MODO DEMO</span></div><p class="muted" style="margin:8px 0 0">Triagem transparente: abra um relato, atualize o status e deixe uma nota pública.</p></div><div class="tabs">${["Todos", "Recebido", "Em análise", "Encaminhado", "Concluído"].map((f) => `<button class="tab ${state.operatorFilter === f ? "active" : ""}" data-opfilter="${f}">${f}</button>`).join("")}</div>${rs.length ? `<div class="reports">${rs.map(reportCard).join("")}</div>` : `<div class="empty"><b>Fila sem relatos nesse status</b><p>Escolha outro filtro para ver os exemplos disponíveis.</p></div>`}</main>`;
+        }
+        function render() {
+          urlState();
+          let page =
+            state.view === "detalhe"
+              ? detailPage()
+              : state.view === "denuncia"
+                ? reportPage()
+                : state.view === "operacao"
+                  ? operatorPage()
+                  : mapPage();
+          app.innerHTML = header() + page + nav();
+          bind();
+        }
+        function toast(msg) {
+          const old = document.querySelector(".toast");
+          if (old) old.remove();
+          const el = document.createElement("div");
+          el.className = "toast";
+          el.setAttribute("role", "status");
+          el.textContent = msg;
+          document.body.append(el);
+          setTimeout(() => el.remove(), 3000);
+        }
+        function go(view) {
+          state.view = view;
+          if (view !== "detalhe") state.selected = null;
+          render();
+        }
+        function bind() {
+          document.getElementById("themeBtn").onclick = () => {
+            state.theme = !state.theme;
+            document.documentElement.classList.toggle("dark", state.theme);
+            render();
+          };
+          document
+            .querySelectorAll("[data-view]")
+            .forEach((b) => (b.onclick = () => go(b.dataset.view)));
+          document.querySelectorAll("[data-mode]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                state.mapMode = b.dataset.mode;
+                render();
+              }),
+          );
+          document.querySelectorAll("[data-filter]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                state.filter = b.dataset.filter;
+                render();
+              }),
+          );
+          document.querySelectorAll("[data-opfilter]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                state.operatorFilter = b.dataset.opfilter;
+                render();
+              }),
+          );
+          document.querySelectorAll("[data-report]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                state.selected = b.dataset.report;
+                if (state.view === "operacao") openOperatorReport();
+                else go("detalhe");
+              }),
+          );
+          const cs = document.getElementById("citySelect");
+          if (cs)
+            cs.onchange = () => {
+              state.city = cs.value;
+              state.selected = null;
+              render();
+            };
+          const desc = document.getElementById("description");
+          if (desc)
+            desc.oninput = () => {
+              state.form.description = desc.value;
+              document.getElementById("charCount").textContent =
+                desc.value.length + "/220";
+            };
+          [
+            ["cameraInput", "Câmera"],
+            ["galleryInput", "Galeria"],
+          ].forEach(([id, source]) => {
+            const input = document.getElementById(id);
+            if (input)
+              input.onchange = () => {
+                const file = input.files && input.files[0];
+                if (!file) return;
+                if (!file.type.startsWith("image/")) {
+                  toast("Selecione um arquivo de imagem.");
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                  state.form.image = reader.result;
+                  state.form.imageSource = source;
+                  render();
+                };
+                reader.readAsDataURL(file);
+              };
+          });
+          const category = document.getElementById("category");
+          if (category)
+            category.onchange = () => (state.form.category = category.value);
+          const map = document.getElementById("pinMap");
+          if (map) {
+            map.onclick = (e) => {
+              const rect = map.getBoundingClientRect();
+              state.form.x = Math.max(
+                5,
+                Math.min(95, ((e.clientX - rect.left) / rect.width) * 100),
+              );
+              state.form.y = Math.max(
+                8,
+                Math.min(90, ((e.clientY - rect.top) / rect.height) * 100),
+              );
+              render();
+            };
+            map.onkeydown = (e) => {
+              const step = e.shiftKey ? 8 : 3;
+              let moved = true;
+              if (e.key === "ArrowUp")
+                state.form.y = Math.max(8, state.form.y - step);
+              else if (e.key === "ArrowDown")
+                state.form.y = Math.min(90, state.form.y + step);
+              else if (e.key === "ArrowLeft")
+                state.form.x = Math.max(5, state.form.x - step);
+              else if (e.key === "ArrowRight")
+                state.form.x = Math.min(95, state.form.x + step);
+              else moved = false;
+              if (moved) {
+                e.preventDefault();
+                render();
+                document.getElementById("pinMap")?.focus();
+              }
+            };
+          }
+          const confirm = document.getElementById("confirmBtn");
+          if (confirm) confirm.onclick = () => authGate("confirm");
+          const publish = document.getElementById("publishBtn");
+          if (publish)
+            publish.onclick = () => {
+              if (!state.form.description.trim()) {
+                toast("Escreva uma descrição breve antes de continuar.");
+                document.getElementById("description").focus();
+                return;
+              }
+              authGate("publish");
+            };
+          const receipt = document.getElementById("receiptExplore");
+          if (receipt)
+            receipt.onclick = () => {
+              state.receipt = null;
+              go("detalhe");
+            };
+          const newReport = document.getElementById("newReport");
+          if (newReport)
+            newReport.onclick = () => {
+              state.receipt = null;
+              state.form = {
+                category: "pavimento",
+                description: "",
+                image: null,
+                imageSource: "",
+                x: 50,
+                y: 50,
+              };
+              render();
+            };
+        }
+        function authGate(action) {
+          state.pendingAction = action;
+          const overlay = document.createElement("div");
+          overlay.className = "overlay";
+          overlay.innerHTML = `<section class="dialog" role="dialog" aria-modal="true" aria-labelledby="gateTitle"><button class="dialog-close" aria-label="Fechar">×</button><div class="eyebrow">ETAPA DE DEMONSTRAÇÃO</div><h2 id="gateTitle">Entrar para ${action === "confirm" ? "confirmar o relato" : "publicar o exemplo"}?</h2><p class="muted">A navegação e os detalhes são públicos. Para experimentar esta ação, use a entrada simulada abaixo. Nenhuma conta será criada.</p><div class="warning">SIMULAÇÃO — este protótipo não autentica nem envia dados a serviços externos.</div><div class="dialog-actions"><button class="primary" id="demoSignIn">Continuar como pessoa demonstradora</button><button class="secondary" id="cancelGate">Agora não</button></div></section>`;
+          document.body.append(overlay);
+          overlay.querySelector(".dialog-close").onclick = () =>
+            overlay.remove();
+          overlay.querySelector("#cancelGate").onclick = () => overlay.remove();
+          overlay.onclick = (e) => {
+            if (e.target === overlay) overlay.remove();
+          };
+          overlay.querySelector("#demoSignIn").onclick = () => {
+            overlay.remove();
+            continueAction(action);
+          };
+          overlay.querySelector("#demoSignIn").focus();
+        }
+        function continueAction(action) {
+          if (action === "confirm") {
+            const r = selected();
+            if (!r) return;
+            const count = (r.confirmations || 0) + 1;
+            r.confirmations = count;
+            r.history.push({
+              status: r.status,
+              note: `${count} confirmação(ões) de continuidade nesta sessão demonstrativa.`,
+              date: "Agora",
+            });
+            toast("Confirmação registrada somente nesta demonstração.");
+            render();
+          } else {
+            const n = records.filter((r) => r.city === state.city).length + 1;
+            const r = {
+              id: `DEMO-${String(n + city().areas.length * 3).padStart(3, "0")}`,
+              city: state.city,
+              category: state.form.category,
+              title:
+                state.form.description.trim().split(/[.!?]/)[0].slice(0, 48) ||
+                categories[state.form.category].name,
+              status: "Recebido",
+              area: city().areas[
+                Math.min(
+                  city().areas.length - 1,
+                  Math.floor((state.form.y / 100) * city().areas.length),
+                )
+              ],
+              x: state.form.x,
+              y: state.form.y,
+              description: state.form.description.trim(),
+              created: "Agora · demonstração",
+              image: state.form.image,
+              imageSource: state.form.imageSource,
+              history: [
+                {
+                  status: "Recebido",
+                  note: "Relato de exemplo recebido. Revisão da imagem aguarda triagem demonstrativa.",
+                  date: "Agora",
+                },
+              ],
+            };
+            records.unshift(r);
+            state.selected = r.id;
+            state.receipt = r.id;
+            state.view = "denuncia";
+            render();
+          }
+        }
+        function openOperatorReport() {
+          const r = selected();
+          if (!r) return;
+          const overlay = document.createElement("div");
+          overlay.className = "overlay";
+          overlay.innerHTML = `<section class="dialog" role="dialog" aria-modal="true" aria-labelledby="operatorTitle"><button class="dialog-close" aria-label="Fechar">×</button><div class="eyebrow">REGISTRO DE DEMONSTRAÇÃO · ${r.id}</div><h2 id="operatorTitle">${esc(r.title)}</h2><p class="muted">${esc(r.description)}</p><div class="field"><label for="newStatus">Novo status</label><select id="newStatus">${["Recebido", "Em análise", "Encaminhado", "Concluído"].map((s) => `<option ${r.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></div><div class="field" style="margin-top:10px"><label for="operatorNote">Nota pública breve</label><textarea id="operatorNote" maxlength="160" placeholder="Explique a atualização de forma clara."></textarea></div><div class="dialog-actions"><button class="primary" id="saveStatus">Atualizar status demonstrativo</button><button class="secondary" id="cancelOperator">Cancelar</button></div></section>`;
+          document.body.append(overlay);
+          overlay.querySelector(".dialog-close").onclick = () =>
+            overlay.remove();
+          overlay.querySelector("#cancelOperator").onclick = () =>
+            overlay.remove();
+          overlay.onclick = (e) => {
+            if (e.target === overlay) overlay.remove();
+          };
+          overlay.querySelector("#saveStatus").onclick = () => {
+            const status = overlay.querySelector("#newStatus").value,
+              note = overlay.querySelector("#operatorNote").value.trim();
+            if (!note) {
+              toast("Inclua uma nota pública para registrar a mudança.");
+              overlay.querySelector("#operatorNote").focus();
+              return;
+            }
+            r.status = status;
+            r.history.push({
+              status,
+              note,
+              date: "Agora · operação demonstrativa",
+            });
+            overlay.remove();
+            toast("Fila e histórico público atualizados nesta sessão.");
+            render();
+          };
+        }
+        render();
+      })();
+    </script>
+  </body>
+</html>

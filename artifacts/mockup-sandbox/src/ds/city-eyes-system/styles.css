@@ -1,0 +1,4 @@
+/* The design system's stylesheet supplies the only Tailwind build and token set
+ * for this entry. Do not also import the sandbox's global src/index.css here.
+ */
+@import '@workspace/city-eyes-system/styles.css';

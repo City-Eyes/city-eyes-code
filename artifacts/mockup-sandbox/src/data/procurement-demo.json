@@ -1,0 +1,73 @@
+{
+  "datasetType": "synthetic_demo",
+  "sourceStatus": "not_official",
+  "sourceDescription": "A estrutura usa apenas nomes de campos visíveis na listagem pública consultada. Nenhuma linha ou exportação oficial foi coletada.",
+  "dataAsOf": null,
+  "records": [
+    {
+      "id": "DEMO-001",
+      "modality": "Concorrência fictícia",
+      "nature": "Serviço",
+      "status": "Em planejamento",
+      "number": "DEMO-001",
+      "year": 2026,
+      "openingAt": "2026-12-04T09:00:00-03:00",
+      "entity": "Secretaria de Demonstração Urbana",
+      "objectSummary": "Exemplo fictício de manutenção preventiva de espaços públicos.",
+      "estimatedValueCents": 24850000,
+      "awardedValueCents": null
+    },
+    {
+      "id": "DEMO-002",
+      "modality": "Pregão fictício",
+      "nature": "Material",
+      "status": "Em análise",
+      "number": "DEMO-002",
+      "year": 2026,
+      "openingAt": "2026-11-28T14:30:00-03:00",
+      "entity": "Departamento Municipal de Exemplo",
+      "objectSummary": "Exemplo fictício de aquisição de materiais para sinalização.",
+      "estimatedValueCents": 8760000,
+      "awardedValueCents": null
+    },
+    {
+      "id": "DEMO-003",
+      "modality": "Concorrência fictícia",
+      "nature": "Obra",
+      "status": "Homologada",
+      "number": "DEMO-003",
+      "year": 2026,
+      "openingAt": "2026-10-15T10:00:00-03:00",
+      "entity": "Unidade de Infraestrutura Demonstrativa",
+      "objectSummary": "Exemplo fictício de adequação de calçadas em área ilustrativa.",
+      "estimatedValueCents": 51200000,
+      "awardedValueCents": 48900000
+    },
+    {
+      "id": "DEMO-004",
+      "modality": "Dispensa fictícia",
+      "nature": "Serviço",
+      "status": "Publicada",
+      "number": "DEMO-004",
+      "year": 2026,
+      "openingAt": "2026-12-10T08:30:00-03:00",
+      "entity": "Secretaria de Demonstração Urbana",
+      "objectSummary": "Exemplo fictício de vistoria técnica em equipamentos urbanos.",
+      "estimatedValueCents": 12400000,
+      "awardedValueCents": null
+    },
+    {
+      "id": "DEMO-005",
+      "modality": "Pregão fictício",
+      "nature": "Material",
+      "status": "Concluída",
+      "number": "DEMO-005",
+      "year": 2026,
+      "openingAt": "2026-09-22T11:00:00-03:00",
+      "entity": "Departamento Municipal de Exemplo",
+      "objectSummary": "Exemplo fictício de fornecimento de itens para conservação urbana.",
+      "estimatedValueCents": 16350000,
+      "awardedValueCents": 15720000
+    }
+  ]
+}
