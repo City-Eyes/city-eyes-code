@@ -73,6 +73,38 @@ function getApiBaseUrl() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  return Platform.OS === "web" ? (
+    <WebAuthProvider>{children}</WebAuthProvider>
+  ) : (
+    <NativeAuthProvider>{children}</NativeAuthProvider>
+  );
+}
+
+function WebAuthProvider({ children }: { children: ReactNode }) {
+  const [error, setError] = useState("");
+  const login = useCallback(async () => {
+    setError("O acesso seguro à conta está disponível no aplicativo móvel.");
+  }, []);
+  const logout = useCallback(async () => setError(""), []);
+  const refreshUser = useCallback(async () => setError(""), []);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user: null,
+        isLoading: false,
+        error,
+        login,
+        logout,
+        refreshUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+function NativeAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
