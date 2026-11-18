@@ -7,12 +7,13 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useDesignSystemFonts } from "@workspace/city-eyes-system/hooks/use-fonts";
 import { setBaseUrl } from "@workspace/api-client-react";
 import { Stack } from "expo-router";
+import { getApiBaseUrl } from "@/lib/api-url";
 
 const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
 if (!publicDomain) {
   throw new Error("EXPO_PUBLIC_DOMAIN must be set for the mobile API client.");
 }
-setBaseUrl(`https://${publicDomain}`);
+setBaseUrl(getApiBaseUrl(publicDomain));
 
 const queryClient = new QueryClient({
   defaultOptions: {
