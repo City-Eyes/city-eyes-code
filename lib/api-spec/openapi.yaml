@@ -12,6 +12,14 @@ tags:
     description: Health operations
   - name: public-directory
     description: Public city and demonstration report data
+  - name: authentication
+    description: Mobile and browser authentication.
+  - name: report-submission
+    description: Authenticated urban report submission.
+  - name: operator-queue
+    description: City-scoped municipal operator queue.
+  - name: storage
+    description: Private photo upload and serving.
 paths:
   /healthz:
     get:
@@ -45,6 +53,187 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReadinessStatus"
+  /auth/user:
+    get:
+      operationId: getCurrentAuthUser
+      tags: [authentication]
+      summary: Get the current authenticated user
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Authentication state, including an anonymous session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUserEnvelope"
+  /login:
+    get:
+      operationId: beginBrowserLogin
+      tags: [authentication]
+      summary: Start the browser login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to the identity provider.
+  /callback:
+    get:
+      operationId: handleBrowserLoginCallback
+      tags: [authentication]
+      summary: Complete the browser login flow
+      responses:
+        "302":
+          description: Redirect after validating the OIDC callback.
+  /logout:
+    get:
+      operationId: logoutBrowserSession
+      tags: [authentication]
+      summary: Clear the browser session
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect after ending the OIDC session.
+  /mobile-auth/token-exchange:
+    post:
+      operationId: exchangeMobileAuthorizationCode
+      tags: [authentication]
+      summary: Exchange a mobile OIDC code for an API session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileTokenExchangeRequest"
+      responses:
+        "200":
+          description: Session token created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileTokenExchangeResponse"
+        "400":
+          description: Invalid authorization exchange request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authorization code could not be validated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Authentication service is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /mobile-auth/logout:
+    post:
+      operationId: logoutMobileSession
+      tags: [authentication]
+      summary: End the mobile API session
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+      responses:
+        "200":
+          description: Session ended.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutSuccess"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a private photo upload URL
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Signed upload URL and server-owned object path.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Unsupported file type or size.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication is required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Photo storage is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getPublicReportPhoto
+      tags: [storage]
+      summary: Serve a photo attached to a public report
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          description: Object path segments from the server-issued upload response.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public report image; only objects explicitly linked to a report are visible.
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Object is missing or not public.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Photo storage is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /cities:
     get:
       operationId: listCities
@@ -108,6 +297,61 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+    post:
+      operationId: createCityReport
+      tags: [report-submission]
+      summary: Submit an authenticated report to a city
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - name: cityId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [curitiba, londrina, maringa, ponta-grossa]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportInput"
+      responses:
+        "201":
+          description: Report stored and made publicly visible.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Invalid report data or coordinates outside the city estimate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication is required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City or uploaded photo not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Uploaded photo is expired, already attached, or not owned by the user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Photo storage is unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /cities/{cityId}/reports/{reportId}:
     get:
       operationId: getCityReport
@@ -139,7 +383,164 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /operator/cities:
+    get:
+      operationId: listOperatorCities
+      tags: [operator-queue]
+      summary: List cities assigned to the current operator
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+      responses:
+        "200":
+          description: Cities for which the current user has operator membership.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OperatorCity"
+        "401":
+          description: Authentication is required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /operator/cities/{cityId}/reports:
+    get:
+      operationId: listOperatorReports
+      tags: [operator-queue]
+      summary: List reports in an authorized city queue
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - name: cityId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [curitiba, londrina, maringa, ponta-grossa]
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ReportStatus"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100000
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Queue page scoped to the operator's city membership.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorReportPage"
+        "400":
+          description: Invalid queue filter or pagination.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication is required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: The operator is not assigned to this city.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /operator/cities/{cityId}/reports/{reportId}:
+    patch:
+      operationId: updateOperatorReport
+      tags: [operator-queue]
+      summary: Update a report and append an operator event
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - name: cityId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [curitiba, londrina, maringa, ponta-grossa]
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperatorReportUpdateInput"
+      responses:
+        "200":
+          description: Updated report and its authorized event history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorReport"
+        "400":
+          description: Invalid status or empty update.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication is required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "403":
+          description: The operator is not assigned to this city.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City or report not found in this city.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque API session bearer token.
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: HttpOnly browser session cookie.
+      schema:
+        type: string
   schemas:
     HealthStatus:
       type: object
@@ -175,6 +576,151 @@ components:
         reportCount:
           type: integer
       required: [id, name, state, reportCount]
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, "null"]
+          format: email
+        firstName:
+          type: [string, "null"]
+        lastName:
+          type: [string, "null"]
+        profileImageUrl:
+          type: [string, "null"]
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: "#/components/schemas/AuthUser"
+            - type: "null"
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+          format: uri
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+    MobileTokenExchangeResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+          const: true
+    UploadUrlRequest:
+      type: object
+      required: [size, contentType]
+      properties:
+        size:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath, expiresAt]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    ReportStatus:
+      type: string
+      enum: [open, in_review, in_progress, resolved]
+    ReportInput:
+      type: object
+      required:
+        - title
+        - description
+        - category
+        - locationLabel
+        - latitude
+        - longitude
+        - captureSource
+        - imageObjectPath
+        - consentToPublicDisplay
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 120
+        description:
+          type: string
+          minLength: 3
+          maxLength: 2000
+        category:
+          type: string
+          enum: [accessibility, drainage, lighting, public-space, waste]
+        locationLabel:
+          type: string
+          minLength: 1
+          maxLength: 180
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        captureSource:
+          type: string
+          enum: [camera, gallery]
+        imageObjectPath:
+          type: string
+          minLength: 1
+        consentToPublicDisplay:
+          type: boolean
+          const: true
+    ReportEvent:
+      type: object
+      required: [id, statusBefore, statusAfter, publicNote, createdAt]
+      properties:
+        id:
+          type: string
+        statusBefore:
+          type: [string, "null"]
+          enum: [open, in_review, in_progress, resolved, null]
+        statusAfter:
+          $ref: "#/components/schemas/ReportStatus"
+        publicNote:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
     Report:
       type: object
       properties:
@@ -199,6 +745,21 @@ components:
           format: date-time
         isDemo:
           type: boolean
+        latitude:
+          type: [number, "null"]
+          format: double
+        longitude:
+          type: [number, "null"]
+          format: double
+        photoUrl:
+          type: [string, "null"]
+          format: uri
+        status:
+          $ref: "#/components/schemas/ReportStatus"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportEvent"
       required:
         - id
         - cityId
@@ -209,6 +770,11 @@ components:
         - locationLabel
         - createdAt
         - isDemo
+        - latitude
+        - longitude
+        - photoUrl
+        - status
+        - events
     ReportPage:
       type: object
       properties:
@@ -225,6 +791,118 @@ components:
         hasNextPage:
           type: boolean
       required: [items, page, limit, total, hasNextPage]
+    OperatorCity:
+      type: object
+      required: [id, name, state, openReportCount]
+      properties:
+        id:
+          type: string
+          enum: [curitiba, londrina, maringa, ponta-grossa]
+        name:
+          type: string
+        state:
+          type: string
+        openReportCount:
+          type: integer
+    OperatorReportEvent:
+      type: object
+      required: [id, statusBefore, statusAfter, publicNote, internalNote, createdAt]
+      properties:
+        id:
+          type: string
+        statusBefore:
+          type: [string, "null"]
+          enum: [open, in_review, in_progress, resolved, null]
+        statusAfter:
+          $ref: "#/components/schemas/ReportStatus"
+        publicNote:
+          type: [string, "null"]
+        internalNote:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+    OperatorReport:
+      type: object
+      required:
+        - id
+        - cityId
+        - cityName
+        - title
+        - description
+        - category
+        - locationLabel
+        - latitude
+        - longitude
+        - photoUrl
+        - status
+        - createdAt
+        - isDemo
+        - events
+      properties:
+        id:
+          type: string
+        cityId:
+          type: string
+          enum: [curitiba, londrina, maringa, ponta-grossa]
+        cityName:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [accessibility, drainage, lighting, public-space, waste]
+        locationLabel:
+          type: string
+        latitude:
+          type: [number, "null"]
+          format: double
+        longitude:
+          type: [number, "null"]
+          format: double
+        photoUrl:
+          type: [string, "null"]
+          format: uri
+        status:
+          $ref: "#/components/schemas/ReportStatus"
+        createdAt:
+          type: string
+          format: date-time
+        isDemo:
+          type: boolean
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperatorReportEvent"
+    OperatorReportPage:
+      type: object
+      required: [items, page, limit, total, hasNextPage]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperatorReport"
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        hasNextPage:
+          type: boolean
+    OperatorReportUpdateInput:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ReportStatus"
+        publicNote:
+          type: string
+          maxLength: 1000
+        internalNote:
+          type: string
+          maxLength: 1000
     ApiError:
       type: object
       properties:

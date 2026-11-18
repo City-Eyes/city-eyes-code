@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { Router, type IRouter, type Response } from "express";
 import {
   ApiErrorSchema,
@@ -10,8 +10,9 @@ import {
   ListCityReportsResponse,
 } from "@workspace/api-zod";
 import { db } from "@workspace/db";
-import { cities, reports } from "@workspace/db/schema";
+import { cities, reportEvents, reports } from "@workspace/db/schema";
 import { logger } from "../lib/logger";
+import { buildPublicPhotoUrl } from "../lib/report-presenter";
 
 const router: IRouter = Router();
 
@@ -101,6 +102,10 @@ router.get("/cities/:cityId/reports", async (request, response) => {
         description: reports.description,
         category: reports.category,
         locationLabel: reports.locationLabel,
+        latitude: reports.latitude,
+        longitude: reports.longitude,
+        imageObjectPath: reports.imageObjectPath,
+        status: reports.status,
         createdAt: reports.createdAt,
         isDemo: reports.isDemo,
       })
@@ -111,8 +116,27 @@ router.get("/cities/:cityId/reports", async (request, response) => {
       .offset(offset);
 
     const total = Number(totalRow?.total ?? 0);
+    const events = await getPublicEvents(rows.map((row) => row.id));
+    const eventsByReport = groupPublicEvents(events);
     const data = ListCityReportsResponse.parse({
-      items: rows.map((row) => ({ ...row, cityName: city.name })),
+      items: rows.map((row) => ({
+        id: row.id,
+        cityId: row.cityId,
+        cityName: city.name,
+        title: row.title,
+        description: row.description,
+        category: row.category,
+        locationLabel: row.locationLabel,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        photoUrl: row.imageObjectPath
+          ? buildPublicPhotoUrl(request, row.imageObjectPath)
+          : null,
+        status: row.status,
+        events: eventsByReport.get(row.id) ?? [],
+        createdAt: row.createdAt,
+        isDemo: row.isDemo,
+      })),
       page: query.data.page,
       limit: query.data.limit,
       total,
@@ -153,6 +177,10 @@ router.get(
           description: reports.description,
           category: reports.category,
           locationLabel: reports.locationLabel,
+           latitude: reports.latitude,
+           longitude: reports.longitude,
+           imageObjectPath: reports.imageObjectPath,
+           status: reports.status,
           createdAt: reports.createdAt,
           isDemo: reports.isDemo,
         })
@@ -175,7 +203,16 @@ router.get(
         );
       }
 
-      return response.json(GetCityReportResponse.parse(row));
+      const events = await getPublicEvents([row.id]);
+      return response.json(
+        GetCityReportResponse.parse({
+          ...row,
+          photoUrl: row.imageObjectPath
+            ? buildPublicPhotoUrl(request, row.imageObjectPath)
+            : null,
+          events,
+        }),
+      );
     } catch (error) {
       logger.error({ err: error }, "Failed to load public city report");
       return sendApiError(
@@ -189,3 +226,35 @@ router.get(
 );
 
 export default router;
+
+async function getPublicEvents(reportIds: string[]) {
+  if (reportIds.length === 0) return [];
+  return db
+    .select({
+      id: reportEvents.id,
+      reportId: reportEvents.reportId,
+      statusBefore: reportEvents.statusBefore,
+      statusAfter: reportEvents.statusAfter,
+      publicNote: reportEvents.publicNote,
+      createdAt: reportEvents.createdAt,
+    })
+    .from(reportEvents)
+    .where(inArray(reportEvents.reportId, reportIds))
+    .orderBy(asc(reportEvents.createdAt), asc(reportEvents.id));
+}
+
+function groupPublicEvents(
+  events: Awaited<ReturnType<typeof getPublicEvents>>,
+) {
+  const map = new Map<
+    string,
+    Array<Omit<(typeof events)[number], "reportId">>
+  >();
+  for (const event of events) {
+    const { reportId, ...publicFields } = event;
+    const current = map.get(reportId) ?? [];
+    current.push(publicFields);
+    map.set(reportId, current);
+  }
+  return map;
+}

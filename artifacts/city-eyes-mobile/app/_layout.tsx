@@ -6,7 +6,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useDesignSystemFonts } from "@workspace/city-eyes-system/hooks/use-fonts";
 import { setBaseUrl } from "@workspace/api-client-react";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { Stack } from "expo-router";
+import { AuthProvider } from "@/lib/auth";
+import { getStoredAuthToken } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api-url";
 
 const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -14,6 +17,7 @@ if (!publicDomain) {
   throw new Error("EXPO_PUBLIC_DOMAIN must be set for the mobile API client.");
 }
 setBaseUrl(getApiBaseUrl(publicDomain));
+setAuthTokenGetter(getStoredAuthToken);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +34,8 @@ function RootLayoutNav() {
       <Stack.Screen name="index" />
       <Stack.Screen name="city/[cityId]" />
       <Stack.Screen name="city/[cityId]/report/[reportId]" />
+      <Stack.Screen name="city/[cityId]/report/new" />
+      <Stack.Screen name="auth" />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
@@ -44,7 +50,9 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
-              <RootLayoutNav />
+              <AuthProvider>
+                <RootLayoutNav />
+              </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

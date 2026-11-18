@@ -10,8 +10,11 @@ Monorepo do CITY EYES. A aplicação Android/iOS usa Expo; o workspace contém c
 
 ## Estado técnico
 
-- API expõe consulta pública paginada de cidades e relatos por cidade; Drizzle e seed local incluem quatro cidades e relatos sintéticos.
-- App Expo local tem seleção de cidade, lista e detalhe; publicação de relatos, autenticação, fila municipal, mapa e diretório de transparência ainda estão pendentes.
+- Esta branch local acrescenta Replit Auth e envio autenticado de relatos com foto e localização revisável. Ainda não está publicada na `main`; a entrega será rastreada por PRs vinculados às issues. A fila municipal será adicionada em uma etapa separada.
+- Os uploads usam App Storage. O servidor confirma tipo, assinatura e tamanho do arquivo; fotos vinculadas a relatos são removidas após 30 dias. Imagens, texto e localização ficam públicos depois do consentimento explícito. Metadados da foto não são tratados como prova de autenticidade.
+- A autoria é derivada da sessão autenticada, não dos dados enviados pelo cliente.
+- As quatro cidades usam caixas geográficas aproximadas derivadas das malhas municipais do IBGE. Elas não substituem limites municipais precisos.
+- A frente de transparência, o mapa, a análise de autenticidade e o envio automático de denúncias continuam fora desta entrega.
 - Demonstração de licitações tem cinco registros fictícios e não é fonte municipal. A implementação do diretório ainda precisa de validação individual dos links oficiais.
 
 ## Rodar e validar
@@ -25,6 +28,8 @@ pnpm run typecheck
 pnpm --filter @workspace/mockup-sandbox test
 pnpm --filter @workspace/api-server run dev
 ```
+
+Os testes da API só rodam com `DATABASE_TEST_URL` apontando para um banco de teste isolado. O comando falha se essa variável estiver ausente; nunca use o banco de desenvolvimento compartilhado para testes. O CI cria um PostgreSQL temporário e separado.
 
 ## Prontidão do banco e alertas
 
