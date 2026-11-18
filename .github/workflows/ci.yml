@@ -44,4 +44,6 @@ jobs:
         run: pnpm --filter @workspace/api-server test
         env:
           DATABASE_TEST_URL: postgresql://cityeyes_test:cityeyes_test@localhost:5432/cityeyes_test
+      - name: Test mobile protected state
+        run: pnpm --filter @workspace/api-server exec tsx --test ../../artifacts/city-eyes-mobile/tests/protected-cache.test.mjs
       - run: pnpm --filter @workspace/mockup-sandbox test

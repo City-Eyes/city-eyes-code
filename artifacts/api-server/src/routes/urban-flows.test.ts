@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import { after, before, test } from "node:test";
@@ -401,7 +402,10 @@ test("image signature validation rejects mismatched metadata", () => {
 });
 
 test("native authorization callback accepts the configured Expo scheme only", () => {
-  assert.equal(isAllowedMobileRedirectProtocol("city-eyes-mobile:"), true);
+  const mobileConfig = JSON.parse(
+    readFileSync(new URL("../../../city-eyes-mobile/app.json", import.meta.url), "utf8"),
+  ) as { expo: { scheme: string } };
+  assert.equal(isAllowedMobileRedirectProtocol(`${mobileConfig.expo.scheme}:`), true);
   assert.equal(isAllowedMobileRedirectProtocol("exp:"), true);
   assert.equal(isAllowedMobileRedirectProtocol("cityeyes:"), false);
   assert.equal(isAllowedMobileRedirectProtocol("javascript:"), false);
