@@ -8,6 +8,9 @@ import {
   ObjectStorageService,
 } from "../lib/objectStorage";
 
+
+// Ensure private object directory is defined for unit tests in CI
+process.env.PRIVATE_OBJECT_DIR = process.env.PRIVATE_OBJECT_DIR || "/tmp/city-eyes-test-storage";
 function createMockGcs() {
   const store = new Map<
     string,
