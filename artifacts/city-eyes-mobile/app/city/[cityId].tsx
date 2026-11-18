@@ -5,10 +5,12 @@ import * as Haptics from "expo-haptics";
 import {
   useListCities,
   useListCityReports,
+  useListOperatorCities,
   getListCityReportsQueryKey,
 } from "@workspace/api-client-react";
 import { Badge } from "@workspace/city-eyes-system/components/native/badge";
 import { Button } from "@workspace/city-eyes-system/components/native/button";
+import { Card } from "@workspace/city-eyes-system/components/native/card";
 import { Empty } from "@workspace/city-eyes-system/components/native/empty";
 import { Typography } from "@workspace/city-eyes-system/components/native/typography";
 import { useColors } from "@workspace/city-eyes-system/hooks/use-colors";
@@ -23,6 +25,7 @@ import {
   ScreenScrollView,
   parseCityId,
 } from "@/components/app-ui";
+import { useAuth } from "@/lib/auth";
 
 export default function CityReportsScreen() {
   const params = useLocalSearchParams<{ cityId?: string | string[] }>();
@@ -45,6 +48,17 @@ export default function CityReportsScreen() {
     },
   );
   const city = citiesQuery.data?.find((item) => item.id === cityId);
+  const auth = useAuth();
+  const operatorCitiesQuery = useListOperatorCities({
+    query: {
+      enabled: Boolean(auth.user),
+      staleTime: 60_000,
+    },
+  });
+  const isOperatorForCity = Boolean(
+    auth.user &&
+      operatorCitiesQuery.data?.some((c) => c.id === cityId),
+  );
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -107,6 +121,43 @@ export default function CityReportsScreen() {
               >
                 Fazer um relato
               </Button>
+
+              {isOperatorForCity ? (
+                <Card style={[styles.operatorCard, { borderColor: colors.border }]}>
+                  <View style={styles.operatorCardHeader}>
+                    <Typography variant="eyebrow">ÁREA DA PREFEITURA</Typography>
+                    <Badge variant="default">Operador Autorizado</Badge>
+                  </View>
+                  <Typography variant="muted">
+                    Acompanhe os relatos em aberto e atualize o status de atendimento da cidade.
+                  </Typography>
+                  <Button
+                    testID="city-open-operator-queue"
+                    variant="outline"
+                    onPress={() =>
+                      router.push({
+                        pathname: "/city/[cityId]/queue",
+                        params: { cityId },
+                      })
+                    }
+                  >
+                    Abrir fila municipal de triagem
+                  </Button>
+                </Card>
+              ) : (
+                <Button
+                  testID="city-open-operator-queue-shortcut"
+                  variant="ghost"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/city/[cityId]/queue",
+                      params: { cityId },
+                    })
+                  }
+                >
+                  Acesso de operador municipal
+                </Button>
+              )}
             </View>
 
             <View style={styles.listHeading}>
@@ -176,5 +227,15 @@ const styles = StyleSheet.create({
   },
   entryActions: {
     gap: nativeTheme.spacing.sm,
+  },
+  operatorCard: {
+    gap: nativeTheme.spacing.xs,
+    padding: nativeTheme.spacing.sm,
+    borderWidth: 1,
+  },
+  operatorCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
 });
