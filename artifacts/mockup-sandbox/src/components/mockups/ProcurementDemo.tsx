@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@workspace/city-eyes-system/components/ui/badge";
+import { Button } from "@workspace/city-eyes-system/components/ui/button";
 import {
   Card,
   CardContent,
@@ -36,6 +37,11 @@ const dateTime = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "short",
   timeZone: "America/Sao_Paulo",
 });
+
+const municipalSourceUrl =
+  "https://portal.londrina.pr.gov.br/consulta-as-licitacoes-contratos";
+const procurementListingUrl =
+  "https://portal-prefeitura-londrina.equiplano.cloud/relatorio/licitacao-contrato/licitacoes/licitacoes/listagem?flagDescartada=false&flagVideoconferencia=false&updateParams=false";
 
 function formatMoney(cents: number | null): string {
   return cents === null ? "—" : money.format(cents / 100);
@@ -91,41 +97,97 @@ export function ProcurementDemo() {
           </Badge>
         </header>
 
-        <Card className="border-accent/40 bg-accent/5 shadow-none">
-          <CardHeader className="gap-2">
-            <CardTitle className="text-lg">Aviso sobre esta demonstração</CardTitle>
-            <CardDescription className="text-foreground">
-              Os IDs, datas, órgãos, objetos e valores abaixo foram inventados.
-              Não representam licitações reais, não são relatos da comunidade
-              CITY EYES e não comprovam vínculo com a Prefeitura.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        <section
-          aria-label="Proveniência e data de corte"
-          className="grid gap-4 md:grid-cols-2"
-        >
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Origem da estrutura</CardTitle>
-              <CardDescription>{procurementDemo.sourceDescription}</CardDescription>
+        <section aria-label="Referência oficial de licitações de Londrina">
+          <Card className="border-primary/30 shadow-none">
+            <CardHeader className="gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">FONTE OFICIAL · EXTERNA</Badge>
+                <Badge variant="secondary">Não importada</Badge>
+              </div>
+              <div className="space-y-1.5">
+                <CardTitle>Prefeitura de Londrina / Equiplano</CardTitle>
+                <CardDescription>
+                  A página oficial da Prefeitura encaminha para a listagem de
+                  licitações hospedada pela Equiplano. Esta referência não é um
+                  registro do CITY EYES.
+                </CardDescription>
+              </div>
             </CardHeader>
-            <CardContent className="text-sm font-medium">
-              Fonte dos registros: nenhuma — amostra sintética local.
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Link conferido em <strong className="font-semibold text-foreground">18/11/2026</strong>.
+                  A conferência do endereço não confirma a atualização dos
+                  registros.
+                </p>
+                <Button asChild className="w-fit">
+                  <a
+                    href={procurementListingUrl}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Abrir listagem oficial no Equiplano
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                </Button>
+              </div>
+              <p className="text-sm">
+                <a
+                  className="text-primary underline underline-offset-4"
+                  href={municipalSourceUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Ver a página oficial da Prefeitura que encaminha para a listagem
+                  <span className="sr-only"> (abre em nova aba)</span>
+                </a>
+              </p>
+              <div className="rounded-md border border-border bg-muted/30 p-4">
+                <h3 className="text-sm font-semibold">Limites conhecidos</h3>
+                <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+                  <li>
+                    A listagem consultada informa cobertura a partir de
+                    01/04/2026. A amostra mostrava 10 linhas por página e 8.173
+                    registros declarados; isso não confirma o conteúdo ou o
+                    tamanho de uma exportação.
+                  </li>
+                  <li>
+                    Nenhuma exportação foi baixada. O tipo e o tamanho do
+                    arquivo, o esquema dos campos e a estabilidade dos
+                    identificadores não foram confirmados.
+                  </li>
+                  <li>
+                    Só a página da lista foi observada; detalhes e anexos não
+                    foram avaliados quanto a dados pessoais. “Formato aberto”
+                    não especifica o formato do arquivo. A pesquisa não
+                    confirmou licença CC BY 4.0 específica para esta listagem.
+                  </li>
+                </ul>
+                <p className="mt-3 text-sm text-foreground">
+                  O CITY EYES não importou nem validou esses dados, não os
+                  enviou à Prefeitura e não relacionou a fonte a relatos
+                  comunitários.
+                </p>
+              </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Data de corte</CardTitle>
-              <CardDescription>
-                Não se aplica. Como não há dados oficiais, esta amostra não tem
-                data de atualização nem cobertura temporal municipal.
+        </section>
+
+        <section aria-label="Amostra fictícia do CITY EYES">
+          <Card className="border-accent/40 bg-accent/5 shadow-none">
+            <CardHeader className="gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="destructive">DADOS 100% FICTÍCIOS</Badge>
+                <Badge variant="outline">DEMONSTRAÇÃO CITY EYES</Badge>
+              </div>
+              <CardTitle className="text-lg">Relatos da comunidade e fonte oficial são coisas diferentes</CardTitle>
+              <CardDescription className="text-foreground">
+                Os registros exibidos abaixo foram inventados para demonstrar
+                uma tabela. Não são dados municipais nem relatos reais da
+                comunidade; um relato CITY EYES também não é protocolo da
+                Prefeitura.
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-sm font-medium">
-              Importação oficial: não liberada nem implementada.
-            </CardContent>
           </Card>
         </section>
 
