@@ -17,6 +17,8 @@ import { createApp } from "../app";
 const userId = `operator-test-${randomUUID()}`;
 const sessionId = randomUUID().replaceAll("-", "").repeat(2);
 const reportId = `operator-report-${randomUUID()}`;
+const olderReportId = `operator-report-${randomUUID()}`;
+const createdAt = new Date();
 const app = createApp();
 const baseUrlRef = { value: "" };
 let server: ReturnType<typeof app.listen>;
@@ -55,6 +57,21 @@ before(async () => {
     latitude: -25.43,
     longitude: -49.27,
     status: "open",
+    createdAt,
+    isDemo: false,
+  });
+  await db.insert(reports).values({
+    id: olderReportId,
+    cityId: "curitiba",
+    reporterId: userId,
+    title: "Relato mais antigo para teste",
+    description: "Relato sintético para validar a ordenação.",
+    category: "accessibility",
+    locationLabel: "Local de teste",
+    latitude: -25.43,
+    longitude: -49.27,
+    status: "open",
+    createdAt: new Date(createdAt.getTime() - 60_000),
     isDemo: false,
   });
 
@@ -79,7 +96,9 @@ after(async () => {
     });
   }
   await db.delete(reportEvents).where(eq(reportEvents.reportId, reportId));
+  await db.delete(reportEvents).where(eq(reportEvents.reportId, olderReportId));
   await db.delete(reports).where(eq(reports.id, reportId));
+  await db.delete(reports).where(eq(reports.id, olderReportId));
   await db
     .delete(cityMemberships)
     .where(eq(cityMemberships.userId, userId));
@@ -97,7 +116,7 @@ test("municipal queue restricts access and keeps internal notes private", async 
   assert.deepEqual(cityList.map((city) => city.id), ["curitiba"]);
 
   const queueResponse = await fetch(
-    `${baseUrlRef.value}/operator/cities/curitiba/reports?page=1&limit=50`,
+    `${baseUrlRef.value}/operator/cities/curitiba/reports?page=1&limit=50&status=open&sort=newest`,
     { headers: { Authorization: authorization } },
   );
   const queue = (await queueResponse.json()) as {
@@ -107,6 +126,23 @@ test("municipal queue restricts access and keeps internal notes private", async 
   assert.equal(queueResponse.status, 200);
   assert.ok(queue.items.some((report) => report.id === reportId));
   assert.ok(queue.total >= 1);
+  assert.ok(
+    queue.items.findIndex((report) => report.id === reportId) <
+      queue.items.findIndex((report) => report.id === olderReportId),
+  );
+
+  const oldestFirstResponse = await fetch(
+    `${baseUrlRef.value}/operator/cities/curitiba/reports?page=1&limit=50&status=open&sort=oldest`,
+    { headers: { Authorization: authorization } },
+  );
+  const oldestFirst = (await oldestFirstResponse.json()) as {
+    items: Array<{ id: string }>;
+  };
+  assert.equal(oldestFirstResponse.status, 200);
+  assert.ok(
+    oldestFirst.items.findIndex((report) => report.id === olderReportId) <
+      oldestFirst.items.findIndex((report) => report.id === reportId),
+  );
 
   const crossCityQueue = await fetch(
     `${baseUrlRef.value}/operator/cities/londrina/reports`,

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListOperatorReportsSort } from './listOperatorReportsSort';
 import type { ReportStatus } from './reportStatus';
 
 export type ListOperatorReportsParams = {
@@ -19,4 +20,5 @@ page?: number;
  * @maximum 50
  */
 limit?: number;
+sort?: ListOperatorReportsSort;
 };

@@ -389,5 +389,14 @@ page?: number;
  * @maximum 50
  */
 limit?: number;
+sort?: ListOperatorReportsSort;
 };
+
+export type ListOperatorReportsSort = typeof ListOperatorReportsSort[keyof typeof ListOperatorReportsSort];
+
+
+export const ListOperatorReportsSort = {
+  newest: 'newest',
+  oldest: 'oldest',
+} as const;
 

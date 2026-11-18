@@ -156,7 +156,11 @@ export function createOperatorQueueRouter(): IRouter {
           .from(reports)
           .innerJoin(cities, eq(reports.cityId, cities.id))
           .where(criteria)
-          .orderBy(desc(reports.createdAt), asc(reports.id))
+          .orderBy(
+            ...(query.data.sort === "oldest"
+              ? [asc(reports.createdAt), asc(reports.id)]
+              : [desc(reports.createdAt), asc(reports.id)]),
+          )
           .limit(query.data.limit)
           .offset(offset);
         const events = rows.length

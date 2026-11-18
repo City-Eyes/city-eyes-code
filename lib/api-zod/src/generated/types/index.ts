@@ -16,6 +16,7 @@ export * from './cityId';
 export * from './healthStatus';
 export * from './listCityReportsParams';
 export * from './listOperatorReportsParams';
+export * from './listOperatorReportsSort';
 export * from './logoutBrowserSessionParams';
 export * from './logoutSuccess';
 export * from './mobileTokenExchangeRequest';
