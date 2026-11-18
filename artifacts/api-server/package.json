@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "grant-city-operator": "node scripts/grant-city-operator.mjs",
     "test": "node scripts/run-tests.mjs"
   },
   "dependencies": {

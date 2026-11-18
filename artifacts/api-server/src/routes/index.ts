@@ -4,6 +4,7 @@ import { ObjectStorageService } from "../lib/objectStorage";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import authRouter from "./auth";
 import healthRouter from "./health";
+import { createOperatorQueueRouter } from "./operator-queue";
 import publicDirectoryRouter from "./public-directory";
 import { createReportSubmissionRouter } from "./report-submission";
 import { createStorageRouter } from "./storage";
@@ -19,6 +20,7 @@ export function createApiRouter(
   router.use(publicDirectoryRouter);
   router.use(createStorageRouter(storage));
   router.use(createReportSubmissionRouter(storage));
+  router.use(createOperatorQueueRouter());
   return router;
 }
 

@@ -10,9 +10,9 @@ Monorepo do CITY EYES. A aplicação Android/iOS usa Expo; o workspace contém c
 
 ## Estado técnico
 
-- Esta branch local acrescenta Replit Auth e envio autenticado de relatos com foto e localização revisável. Ainda não está publicada na `main`; a entrega será rastreada por PRs vinculados às issues. A fila municipal será adicionada em uma etapa separada.
+- Esta branch local acrescenta Replit Auth, envio autenticado de relatos com foto e localização revisável, e a API da fila municipal protegida. A tela mobile da fila será integrada em PR separado. Ainda não está publicada na `main`; a entrega será rastreada por PRs vinculados às issues.
 - Os uploads usam App Storage. O servidor confirma tipo, assinatura e tamanho do arquivo; fotos vinculadas a relatos são removidas após 30 dias. Imagens, texto e localização ficam públicos depois do consentimento explícito. Metadados da foto não são tratados como prova de autenticidade.
-- A autoria é derivada da sessão autenticada, não dos dados enviados pelo cliente.
+- A autoria e a cidade autorizada são derivadas da sessão e dos vínculos no banco. A fila separa notas públicas de notas internas; nenhum operador é concedido automaticamente.
 - As quatro cidades usam caixas geográficas aproximadas derivadas das malhas municipais do IBGE. Elas não substituem limites municipais precisos.
 - A frente de transparência, o mapa, a análise de autenticidade e o envio automático de denúncias continuam fora desta entrega.
 - Demonstração de licitações tem cinco registros fictícios e não é fonte municipal. A implementação do diretório ainda precisa de validação individual dos links oficiais.
@@ -30,6 +30,14 @@ pnpm --filter @workspace/api-server run dev
 ```
 
 Os testes da API só rodam com `DATABASE_TEST_URL` apontando para um banco de teste isolado. O comando falha se essa variável estiver ausente; nunca use o banco de desenvolvimento compartilhado para testes. O CI cria um PostgreSQL temporário e separado.
+
+Para conceder acesso municipal, entre primeiro na conta Replit no app e obtenha o ID interno da conta autenticada. Um administrador então executa, apenas no banco escolhido:
+
+```sh
+pnpm --filter @workspace/api-server run grant-city-operator -- <replit-user-id> <curitiba|londrina|maringa|ponta-grossa> [operator|city_admin]
+```
+
+O comando não concede acesso por e-mail e não cria uma conta. Use-o somente para a cidade e o usuário aprovados; a fila valida esse vínculo no servidor em cada leitura e atualização.
 
 ## Prontidão do banco e alertas
 

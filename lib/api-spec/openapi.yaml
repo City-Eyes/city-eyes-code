@@ -439,6 +439,13 @@ paths:
             minimum: 1
             maximum: 50
             default: 20
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [newest, oldest]
+            default: newest
       responses:
         "200":
           description: Queue page scoped to the operator's city membership.

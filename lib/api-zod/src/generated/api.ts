@@ -335,12 +335,13 @@ export const listOperatorReportsQueryPageMax = 100000;
 export const listOperatorReportsQueryLimitDefault = 20;
 export const listOperatorReportsQueryLimitMax = 50;
 
-
+export const listOperatorReportsQuerySortDefault = `newest`;
 
 export const ListOperatorReportsQueryParams = zod.object({
   "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']).optional(),
   "page": zod.coerce.number().int().min(1).max(listOperatorReportsQueryPageMax).default(listOperatorReportsQueryPageDefault),
-  "limit": zod.coerce.number().int().min(1).max(listOperatorReportsQueryLimitMax).default(listOperatorReportsQueryLimitDefault)
+  "limit": zod.coerce.number().int().min(1).max(listOperatorReportsQueryLimitMax).default(listOperatorReportsQueryLimitDefault),
+  "sort": zod.enum(['newest', 'oldest']).default(listOperatorReportsQuerySortDefault)
 })
 
 export const ListOperatorReportsHeader = zod.object({
