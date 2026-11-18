@@ -22,6 +22,7 @@ Monorepo do CITY EYES. A aplicação Android/iOS usa Expo; o workspace contém c
 Requer Node.js 24 e pnpm 10:
 
 ```sh
+cp .env.example .env
 pnpm install --frozen-lockfile
 pnpm run typecheck
 pnpm --filter @workspace/mockup-sandbox test
