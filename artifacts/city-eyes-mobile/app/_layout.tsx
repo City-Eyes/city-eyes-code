@@ -10,12 +10,13 @@ import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { Stack } from "expo-router";
 import { AuthProvider } from "@/lib/auth";
 import { getStoredAuthToken } from "@/lib/auth";
+import { getApiBaseUrl } from "@/lib/api-url";
 
 const publicDomain = process.env.EXPO_PUBLIC_DOMAIN;
 if (!publicDomain) {
   throw new Error("EXPO_PUBLIC_DOMAIN must be set for the mobile API client.");
 }
-setBaseUrl(`https://${publicDomain}`);
+setBaseUrl(getApiBaseUrl(publicDomain));
 setAuthTokenGetter(getStoredAuthToken);
 
 const queryClient = new QueryClient({
