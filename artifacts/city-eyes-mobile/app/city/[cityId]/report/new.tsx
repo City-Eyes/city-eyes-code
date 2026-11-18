@@ -48,14 +48,26 @@ export default function NewReportScreen() {
   const draftKey = auth.user && cityId ? draftKeyFor(auth.user.id, cityId) : null;
   const [hydrated, setHydrated] = useState<string | null>(null);
   const active = React.useRef(true);
-  useEffect(() => () => { active.current = false; }, []);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
     setHydrated(null);
     setDraft(initialDraft);
     if (!draftKey) return;
-    void AsyncStorage.removeItem(`city-eyes-report-draft-${cityId}`).catch(() => undefined);
+    void AsyncStorage.getAllKeys()
+      .then((keys) => {
+        const legacy = keys.filter((k) => k.startsWith("city-eyes-report-draft-"));
+        if (legacy.length > 0) {
+          return AsyncStorage.multiRemove(legacy);
+        }
+      })
+      .catch(() => undefined);
     void AsyncStorage.getItem(draftKey).then((stored) => {
       if (mounted && stored) {
         try { setDraft({ ...initialDraft, ...JSON.parse(stored) as Partial<Draft>, consent: false }); } catch { setError("O rascunho salvo não pôde ser recuperado."); }
@@ -70,7 +82,12 @@ export default function NewReportScreen() {
       .catch(() => setError("Não foi possível salvar o rascunho neste aparelho."));
   }, [draft, hydrated, draftKey, success]);
 
-  const update = (key: keyof Draft, value: string | boolean) => setDraft((current) => ({ ...current, [key]: value }));
+  const update = (key: keyof Draft, value: string | boolean) =>
+    setDraft((current) => ({
+      ...current,
+      [key]: value,
+      ...(key !== "consent" ? { consent: false } : {}),
+    }));
   const selectPhoto = async (source: "camera" | "gallery") => {
     setError("");
     try {
@@ -103,7 +120,7 @@ export default function NewReportScreen() {
           : [{ resize: { height: 2048 } }]
         : [];
       const jpeg = await ImageManipulator.manipulateAsync(asset.uri, resize, { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG });
-      setDraft((current) => ({ ...current, uri: jpeg.uri, captureSource: source }));
+      setDraft((current) => ({ ...current, uri: jpeg.uri, captureSource: source, consent: false }));
     } catch {
       setError("Não foi possível selecionar a imagem. Tente novamente.");
     }
@@ -115,7 +132,7 @@ export default function NewReportScreen() {
       setPermission(current);
       if (!current.granted) return;
       const point = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setDraft((value) => ({ ...value, latitude: String(point.coords.latitude), longitude: String(point.coords.longitude) }));
+      setDraft((value) => ({ ...value, latitude: String(point.coords.latitude), longitude: String(point.coords.longitude), consent: false }));
     } catch {
       setError("Não foi possível obter a localização. Você pode inserir as coordenadas manualmente.");
     }

@@ -11,7 +11,9 @@ import * as AuthSession from "expo-auth-session";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { getApiBaseUrl } from "@/lib/api-url";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -67,11 +69,6 @@ const AuthContext = createContext<AuthContextValue>({
   refreshUser: async () => undefined,
 });
 
-function getApiBaseUrl() {
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
-  return domain ? `https://${domain}` : "";
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,7 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [nonce, setNonce] = useState(() => Crypto.randomUUID());
   const handledCode = useRef("");
   const discovery = AuthSession.useAutoDiscovery(ISSUER_URL);
-  const redirectUri = AuthSession.makeRedirectUri();
+  const configuredScheme =
+    (typeof Constants.expoConfig?.scheme === "string"
+      ? Constants.expoConfig.scheme
+      : undefined) ?? "city-eyes-mobile";
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: configuredScheme });
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: process.env.EXPO_PUBLIC_REPL_ID ?? "",

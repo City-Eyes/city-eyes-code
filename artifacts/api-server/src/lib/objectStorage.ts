@@ -69,6 +69,7 @@ export const objectStorageClient = new Storage({
 });
 
 export class ObjectStorageService implements ImageStorage {
+  constructor(private readonly client: Storage = objectStorageClient) {}
   private getPrivateObjectDir(): string {
     const path = process.env.PRIVATE_OBJECT_DIR?.trim();
     if (!path) throw new Error("Private photo storage is not configured.");
@@ -123,7 +124,7 @@ export class ObjectStorageService implements ImageStorage {
     const { bucketName, storagePath } = parseObjectPath(
       `/${this.getPrivateObjectDir()}/${finalPath.slice("/objects/".length)}`,
     );
-    await objectStorageClient.bucket(bucketName).file(storagePath).save(bytes, {
+    await this.client.bucket(bucketName).file(storagePath).save(bytes, {
       resumable: false,
       preconditionOpts: { ifGenerationMatch: 0 },
       metadata: { contentType: expectedContentType },
@@ -176,7 +177,7 @@ export class ObjectStorageService implements ImageStorage {
     if (!entity || entity.startsWith("/")) throw new ObjectNotFoundError();
     const fullPath = `/${this.getPrivateObjectDir()}/${entity}`;
     const { bucketName, storagePath } = parseObjectPath(fullPath);
-    const file = objectStorageClient.bucket(bucketName).file(storagePath);
+    const file = this.client.bucket(bucketName).file(storagePath);
     const [exists] = await file.exists();
     if (!exists) throw new ObjectNotFoundError();
     return file;
