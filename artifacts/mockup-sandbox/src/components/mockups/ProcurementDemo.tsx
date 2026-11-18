@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@workspace/city-eyes-system/components/ui/table";
 import { procurementDemo } from "../../data/procurement-demo";
+import { filterProcurementRecords } from "../../data/procurement-filter";
 
 const money = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -57,23 +58,7 @@ export function ProcurementDemo() {
   );
 
   const filteredRecords = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
-
-    return procurementDemo.records.filter((record) => {
-      const matchesStatus = status === "all" || record.status === status;
-      const searchableText = [
-        record.number,
-        record.year,
-        record.modality,
-        record.nature,
-        record.entity,
-        record.objectSummary,
-      ]
-        .join(" ")
-        .toLocaleLowerCase("pt-BR");
-
-      return matchesStatus && searchableText.includes(normalizedQuery);
-    });
+    return filterProcurementRecords(procurementDemo.records, { query, status });
   }, [query, status]);
 
   return (
@@ -279,10 +264,19 @@ export function ProcurementDemo() {
                 </TableBody>
               </Table>
             ) : (
-              <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
-                <p className="font-medium">Nenhum exemplo encontrado</p>
+              <div
+                aria-label="Estado vazio da demonstração fictícia"
+                className="rounded-lg border border-dashed border-border px-4 py-10 text-center"
+                role="status"
+              >
+                <p className="font-medium">
+                  Nenhum exemplo fictício encontrado
+                </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Ajuste a busca ou selecione outra situação.
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Demonstração CITY EYES · dados 100% fictícios
                 </p>
               </div>
             )}

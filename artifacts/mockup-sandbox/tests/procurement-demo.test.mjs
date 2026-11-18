@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
+import { filterProcurementRecords } from "../src/data/procurement-filter.js";
 
 const fixturePath = new URL("../src/data/procurement-demo.json", import.meta.url);
 const dataset = JSON.parse(await readFile(fixturePath, "utf8"));
+const componentPath = new URL(
+  "../src/components/mockups/ProcurementDemo.tsx",
+  import.meta.url,
+);
+const componentSource = await readFile(componentPath, "utf8");
 const expectedRecordFields = [
   "id",
   "modality",
@@ -53,4 +59,64 @@ test("contains valid dates, non-negative integer amounts, and no personal fields
   }
 
   assert.doesNotMatch(serialized, /cpf|e-mail|telefone|email|phone/i);
+});
+
+test("text search returns only matching rows for numbers and object descriptions", () => {
+  const byNumber = filterProcurementRecords(dataset.records, {
+    query: " demo-003 ",
+  });
+  const byObject = filterProcurementRecords(dataset.records, {
+    query: "sinalização",
+  });
+
+  assert.deepEqual(byNumber.map((record) => record.id), ["DEMO-003"]);
+  assert.deepEqual(byObject.map((record) => record.id), ["DEMO-002"]);
+});
+
+test("status filter returns only rows with the selected status", () => {
+  const results = filterProcurementRecords(dataset.records, {
+    status: "Homologada",
+  });
+
+  assert.deepEqual(results.map((record) => record.id), ["DEMO-003"]);
+  assert.ok(results.every((record) => record.status === "Homologada"));
+});
+
+test("combined search and status filters exclude unrelated rows", () => {
+  const matching = filterProcurementRecords(dataset.records, {
+    query: "sinalização",
+    status: "Em análise",
+  });
+  const mismatched = filterProcurementRecords(dataset.records, {
+    query: "sinalização",
+    status: "Homologada",
+  });
+
+  assert.deepEqual(matching.map((record) => record.id), ["DEMO-002"]);
+  assert.deepEqual(mismatched, []);
+});
+
+test("the component uses filtered records as the visible table rows", () => {
+  assert.match(
+    componentSource,
+    /filterProcurementRecords\(procurementDemo\.records,\s*\{\s*query,\s*status\s*\}\)/,
+  );
+  assert.match(componentSource, /filteredRecords\.map\(\(record\) => \(/);
+});
+
+test("empty results render an accessible state labeled as fictional demo data", () => {
+  assert.deepEqual(
+    filterProcurementRecords(dataset.records, { query: "não existe" }),
+    [],
+  );
+  assert.match(componentSource, /role="status"/);
+  assert.match(
+    componentSource,
+    /aria-label="Estado vazio da demonstração fictícia"/,
+  );
+  assert.match(componentSource, /Nenhum exemplo fictício encontrado/);
+  assert.match(
+    componentSource,
+    /Demonstração CITY EYES · dados 100% fictícios/,
+  );
 });
