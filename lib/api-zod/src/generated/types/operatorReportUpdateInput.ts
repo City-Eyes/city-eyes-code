@@ -13,4 +13,6 @@ export interface OperatorReportUpdateInput {
   publicNote?: string;
   /** @maxLength 1000 */
   internalNote?: string;
+  /** @maxLength 255 */
+  evidenceImageObjectPath?: string;
 }

@@ -25,6 +25,8 @@ export interface OperatorReport {
   /** @nullable */
   photoUrl: string | null;
   status: ReportStatus;
+  supportsCount?: number;
+  resolutionConfirmationsCount?: number;
   createdAt: Date;
   isDemo: boolean;
   events: OperatorReportEvent[];

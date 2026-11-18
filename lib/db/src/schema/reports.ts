@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, text, timestamp, varchar, doublePrecision, boolean } from "drizzle-orm/pg-core";
+import { index, pgEnum, pgTable, text, timestamp, varchar, doublePrecision, boolean, unique } from "drizzle-orm/pg-core";
 import { cities } from "./cities";
 import { usersTable } from "./auth";
 
@@ -12,6 +12,11 @@ export const reportStatusEnum = pgEnum("city_eyes_report_status", [
 export const captureSourceEnum = pgEnum("city_eyes_capture_source", [
   "camera",
   "gallery",
+]);
+
+export const reportConfirmationTypeEnum = pgEnum("city_eyes_confirmation_type", [
+  "support",
+  "resolution",
 ]);
 
 export const reports = pgTable(
@@ -68,6 +73,7 @@ export const reportEvents = pgTable(
     statusAfter: reportStatusEnum("status_after").notNull(),
     publicNote: text("public_note"),
     internalNote: text("internal_note"),
+    evidenceImageObjectPath: text("evidence_image_object_path"),
     actorId: varchar("actor_id").references(() => usersTable.id, {
       onDelete: "set null",
     }),
@@ -88,5 +94,34 @@ export const reportEvents = pgTable(
   ],
 );
 
+export const reportConfirmations = pgTable(
+  "city_eyes_report_confirmations",
+  {
+    id: text("id").primaryKey(),
+    reportId: text("report_id")
+      .notNull()
+      .references(() => reports.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    type: reportConfirmationTypeEnum("type").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("city_eyes_report_confirmations_user_report_type_unique").on(
+      table.userId,
+      table.reportId,
+      table.type,
+    ),
+    index("city_eyes_report_confirmations_report_type_idx").on(
+      table.reportId,
+      table.type,
+    ),
+  ],
+);
+
 export type ReportRecord = typeof reports.$inferSelect;
 export type ReportEventRecord = typeof reportEvents.$inferSelect;
+export type ReportConfirmationRecord = typeof reportConfirmations.$inferSelect;

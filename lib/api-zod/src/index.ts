@@ -8,6 +8,8 @@ export type {
   Report,
   ReportCategory,
   ReportCityId,
+  ReportConfirmationResponse,
+  ReportConfirmationType,
   ReportPage,
   ReportStatus,
 } from "./generated/types";
