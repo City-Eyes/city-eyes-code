@@ -30,6 +30,122 @@ export const ReadinessCheckResponse = zod.object({
 
 
 /**
+ * @summary Get the current authenticated user
+ */
+export const GetCurrentAuthUserHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
+})
+
+export const GetCurrentAuthUserResponse = zod.object({
+  "user": zod.union([zod.object({
+  "id": zod.string(),
+  "email": zod.string().email().nullable(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "profileImageUrl": zod.string().nullable()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Start the browser login flow
+ */
+export const BeginBrowserLoginQueryParams = zod.object({
+  "returnTo": zod.coerce.string().optional()
+})
+
+export const BeginBrowserLoginResponse = zod.void()
+
+
+/**
+ * @summary Complete the browser login flow
+ */
+export const HandleBrowserLoginCallbackResponse = zod.void()
+
+
+/**
+ * @summary Clear the browser session
+ */
+export const LogoutBrowserSessionQueryParams = zod.object({
+  "returnTo": zod.coerce.string().optional()
+})
+
+export const LogoutBrowserSessionHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
+})
+
+export const LogoutBrowserSessionResponse = zod.void()
+
+
+/**
+ * @summary Exchange a mobile OIDC code for an API session
+ */
+
+
+
+
+
+
+
+export const ExchangeMobileAuthorizationCodeBody = zod.object({
+  "code": zod.string().min(1),
+  "code_verifier": zod.string().min(1),
+  "redirect_uri": zod.string().url().min(1),
+  "state": zod.string().min(1),
+  "nonce": zod.string().min(1).optional()
+})
+
+export const ExchangeMobileAuthorizationCodeResponse = zod.object({
+  "token": zod.string()
+})
+
+
+/**
+ * @summary End the mobile API session
+ */
+export const LogoutMobileSessionHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
+})
+
+export const LogoutMobileSessionResponse = zod.object({
+  "success": zod.literal(true)
+})
+
+
+/**
+ * @summary Request a private photo upload URL
+ */
+export const RequestUploadUrlHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
+})
+
+export const requestUploadUrlBodySizeMax = 10485760;
+
+
+
+export const RequestUploadUrlBody = zod.object({
+  "size": zod.number().int().min(1).max(requestUploadUrlBodySizeMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp'])
+})
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "objectPath": zod.string(),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Serve a photo attached to a public report
+ */
+export const GetPublicReportPhotoParams = zod.object({
+  "objectPath": zod.coerce.string().describe('Object path segments from the server-issued upload response.')
+})
+
+export const GetPublicReportPhotoResponse = zod.unknown()
+
+
+/**
  * Returns the cities available in the CITY EYES demonstration.
  * @summary List supported cities
  */
@@ -73,12 +189,87 @@ export const ListCityReportsResponse = zod.object({
   "category": zod.enum(['accessibility', 'drainage', 'lighting', 'public-space', 'waste']),
   "locationLabel": zod.string(),
   "createdAt": zod.coerce.date(),
-  "isDemo": zod.boolean()
+  "isDemo": zod.boolean(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "photoUrl": zod.string().url().nullable(),
+  "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "statusBefore": zod.union([zod.literal('open'),zod.literal('in_review'),zod.literal('in_progress'),zod.literal('resolved'),zod.literal(null)]).nullable(),
+  "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "publicNote": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
 })),
   "page": zod.number().int(),
   "limit": zod.number().int(),
   "total": zod.number().int(),
   "hasNextPage": zod.boolean()
+})
+
+
+/**
+ * @summary Submit an authenticated report to a city
+ */
+export const CreateCityReportParams = zod.object({
+  "cityId": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa'])
+})
+
+export const CreateCityReportHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
+})
+
+export const createCityReportBodyTitleMin = 3;
+export const createCityReportBodyTitleMax = 120;
+
+export const createCityReportBodyDescriptionMin = 3;
+export const createCityReportBodyDescriptionMax = 2000;
+
+export const createCityReportBodyLocationLabelMax = 180;
+
+export const createCityReportBodyLatitudeMin = -90;
+export const createCityReportBodyLatitudeMax = 90;
+
+export const createCityReportBodyLongitudeMin = -180;
+export const createCityReportBodyLongitudeMax = 180;
+
+
+
+
+export const CreateCityReportBody = zod.object({
+  "title": zod.string().min(createCityReportBodyTitleMin).max(createCityReportBodyTitleMax),
+  "description": zod.string().min(createCityReportBodyDescriptionMin).max(createCityReportBodyDescriptionMax),
+  "category": zod.enum(['accessibility', 'drainage', 'lighting', 'public-space', 'waste']),
+  "locationLabel": zod.string().min(1).max(createCityReportBodyLocationLabelMax),
+  "latitude": zod.number().min(createCityReportBodyLatitudeMin).max(createCityReportBodyLatitudeMax),
+  "longitude": zod.number().min(createCityReportBodyLongitudeMin).max(createCityReportBodyLongitudeMax),
+  "captureSource": zod.enum(['camera', 'gallery']),
+  "imageObjectPath": zod.string().min(1),
+  "consentToPublicDisplay": zod.literal(true)
+})
+
+export const CreateCityReportResponse = zod.object({
+  "id": zod.string(),
+  "cityId": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa']),
+  "cityName": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "category": zod.enum(['accessibility', 'drainage', 'lighting', 'public-space', 'waste']),
+  "locationLabel": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "isDemo": zod.boolean(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "photoUrl": zod.string().url().nullable(),
+  "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "statusBefore": zod.union([zod.literal('open'),zod.literal('in_review'),zod.literal('in_progress'),zod.literal('resolved'),zod.literal(null)]).nullable(),
+  "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "publicNote": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -100,7 +291,139 @@ export const GetCityReportResponse = zod.object({
   "category": zod.enum(['accessibility', 'drainage', 'lighting', 'public-space', 'waste']),
   "locationLabel": zod.string(),
   "createdAt": zod.coerce.date(),
-  "isDemo": zod.boolean()
+  "isDemo": zod.boolean(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "photoUrl": zod.string().url().nullable(),
+  "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "statusBefore": zod.union([zod.literal('open'),zod.literal('in_review'),zod.literal('in_progress'),zod.literal('resolved'),zod.literal(null)]).nullable(),
+  "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "publicNote": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary List cities assigned to the current operator
+ */
+export const ListOperatorCitiesHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
+})
+
+export const ListOperatorCitiesResponseItem = zod.object({
+  "id": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa']),
+  "name": zod.string(),
+  "state": zod.string(),
+  "openReportCount": zod.number().int()
+})
+export const ListOperatorCitiesResponse = zod.array(ListOperatorCitiesResponseItem)
+
+
+/**
+ * @summary List reports in an authorized city queue
+ */
+export const ListOperatorReportsParams = zod.object({
+  "cityId": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa'])
+})
+
+export const listOperatorReportsQueryPageDefault = 1;
+export const listOperatorReportsQueryPageMax = 100000;
+
+export const listOperatorReportsQueryLimitDefault = 20;
+export const listOperatorReportsQueryLimitMax = 50;
+
+
+
+export const ListOperatorReportsQueryParams = zod.object({
+  "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']).optional(),
+  "page": zod.coerce.number().int().min(1).max(listOperatorReportsQueryPageMax).default(listOperatorReportsQueryPageDefault),
+  "limit": zod.coerce.number().int().min(1).max(listOperatorReportsQueryLimitMax).default(listOperatorReportsQueryLimitDefault)
+})
+
+export const ListOperatorReportsHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
+})
+
+export const ListOperatorReportsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "cityId": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa']),
+  "cityName": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "category": zod.enum(['accessibility', 'drainage', 'lighting', 'public-space', 'waste']),
+  "locationLabel": zod.string(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "photoUrl": zod.string().url().nullable(),
+  "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "isDemo": zod.boolean(),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "statusBefore": zod.union([zod.literal('open'),zod.literal('in_review'),zod.literal('in_progress'),zod.literal('resolved'),zod.literal(null)]).nullable(),
+  "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "publicNote": zod.string().nullable(),
+  "internalNote": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "page": zod.number().int(),
+  "limit": zod.number().int(),
+  "total": zod.number().int(),
+  "hasNextPage": zod.boolean()
+})
+
+
+/**
+ * @summary Update a report and append an operator event
+ */
+export const UpdateOperatorReportParams = zod.object({
+  "cityId": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa']),
+  "reportId": zod.coerce.string()
+})
+
+export const UpdateOperatorReportHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
+})
+
+export const updateOperatorReportBodyPublicNoteMax = 1000;
+
+export const updateOperatorReportBodyInternalNoteMax = 1000;
+
+
+
+export const UpdateOperatorReportBody = zod.object({
+  "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']).optional(),
+  "publicNote": zod.string().max(updateOperatorReportBodyPublicNoteMax).optional(),
+  "internalNote": zod.string().max(updateOperatorReportBodyInternalNoteMax).optional()
+})
+
+export const UpdateOperatorReportResponse = zod.object({
+  "id": zod.string(),
+  "cityId": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa']),
+  "cityName": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "category": zod.enum(['accessibility', 'drainage', 'lighting', 'public-space', 'waste']),
+  "locationLabel": zod.string(),
+  "latitude": zod.number().nullable(),
+  "longitude": zod.number().nullable(),
+  "photoUrl": zod.string().url().nullable(),
+  "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "createdAt": zod.coerce.date(),
+  "isDemo": zod.boolean(),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "statusBefore": zod.union([zod.literal('open'),zod.literal('in_review'),zod.literal('in_progress'),zod.literal('resolved'),zod.literal(null)]).nullable(),
+  "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "publicNote": zod.string().nullable(),
+  "internalNote": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 

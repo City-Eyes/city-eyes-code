@@ -51,6 +51,153 @@ export interface City {
   reportCount: number;
 }
 
+export interface AuthUser {
+  id: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  profileImageUrl: string | null;
+}
+
+export interface AuthUserEnvelope {
+  user: AuthUser | null;
+}
+
+export interface MobileTokenExchangeRequest {
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  code_verifier: string;
+  /** @minLength 1 */
+  redirect_uri: string;
+  /** @minLength 1 */
+  state: string;
+  /** @minLength 1 */
+  nonce?: string;
+}
+
+export interface MobileTokenExchangeResponse {
+  token: string;
+}
+
+export const LogoutSuccessValue = {
+  success: true,
+} as const;
+export type LogoutSuccess = typeof LogoutSuccessValue;
+
+export type UploadUrlRequestContentType = typeof UploadUrlRequestContentType[keyof typeof UploadUrlRequestContentType];
+
+
+export const UploadUrlRequestContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface UploadUrlRequest {
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  size: number;
+  contentType: UploadUrlRequestContentType;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  expiresAt: string;
+}
+
+export type ReportStatus = typeof ReportStatus[keyof typeof ReportStatus];
+
+
+export const ReportStatus = {
+  open: 'open',
+  in_review: 'in_review',
+  in_progress: 'in_progress',
+  resolved: 'resolved',
+} as const;
+
+export type ReportInputCategory = typeof ReportInputCategory[keyof typeof ReportInputCategory];
+
+
+export const ReportInputCategory = {
+  accessibility: 'accessibility',
+  drainage: 'drainage',
+  lighting: 'lighting',
+  'public-space': 'public-space',
+  waste: 'waste',
+} as const;
+
+export type ReportInputCaptureSource = typeof ReportInputCaptureSource[keyof typeof ReportInputCaptureSource];
+
+
+export const ReportInputCaptureSource = {
+  camera: 'camera',
+  gallery: 'gallery',
+} as const;
+
+export interface ReportInput {
+  /**
+     * @minLength 3
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 3
+     * @maxLength 2000
+     */
+  description: string;
+  category: ReportInputCategory;
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  locationLabel: string;
+  /**
+     * @minimum -90
+     * @maximum 90
+     */
+  latitude: number;
+  /**
+     * @minimum -180
+     * @maximum 180
+     */
+  longitude: number;
+  captureSource: ReportInputCaptureSource;
+  /** @minLength 1 */
+  imageObjectPath: string;
+  consentToPublicDisplay: true;
+}
+
+/**
+ * @nullable
+ */
+export type ReportEventStatusBefore = typeof ReportEventStatusBefore[keyof typeof ReportEventStatusBefore] | null;
+
+
+export const ReportEventStatusBefore = {
+  open: 'open',
+  in_review: 'in_review',
+  in_progress: 'in_progress',
+  resolved: 'resolved',
+} as const;
+
+export interface ReportEvent {
+  id: string;
+  /** @nullable */
+  statusBefore: ReportEventStatusBefore;
+  statusAfter: ReportStatus;
+  /** @nullable */
+  publicNote: string | null;
+  createdAt: string;
+}
+
 export type ReportCityId = typeof ReportCityId[keyof typeof ReportCityId];
 
 
@@ -82,6 +229,14 @@ export interface Report {
   locationLabel: string;
   createdAt: string;
   isDemo: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  photoUrl: string | null;
+  status: ReportStatus;
+  events: ReportEvent[];
 }
 
 export interface ReportPage {
@@ -92,12 +247,138 @@ export interface ReportPage {
   hasNextPage: boolean;
 }
 
+export type OperatorCityId = typeof OperatorCityId[keyof typeof OperatorCityId];
+
+
+export const OperatorCityId = {
+  curitiba: 'curitiba',
+  londrina: 'londrina',
+  maringa: 'maringa',
+  'ponta-grossa': 'ponta-grossa',
+} as const;
+
+export interface OperatorCity {
+  id: OperatorCityId;
+  name: string;
+  state: string;
+  openReportCount: number;
+}
+
+/**
+ * @nullable
+ */
+export type OperatorReportEventStatusBefore = typeof OperatorReportEventStatusBefore[keyof typeof OperatorReportEventStatusBefore] | null;
+
+
+export const OperatorReportEventStatusBefore = {
+  open: 'open',
+  in_review: 'in_review',
+  in_progress: 'in_progress',
+  resolved: 'resolved',
+} as const;
+
+export interface OperatorReportEvent {
+  id: string;
+  /** @nullable */
+  statusBefore: OperatorReportEventStatusBefore;
+  statusAfter: ReportStatus;
+  /** @nullable */
+  publicNote: string | null;
+  /** @nullable */
+  internalNote: string | null;
+  createdAt: string;
+}
+
+export type OperatorReportCityId = typeof OperatorReportCityId[keyof typeof OperatorReportCityId];
+
+
+export const OperatorReportCityId = {
+  curitiba: 'curitiba',
+  londrina: 'londrina',
+  maringa: 'maringa',
+  'ponta-grossa': 'ponta-grossa',
+} as const;
+
+export type OperatorReportCategory = typeof OperatorReportCategory[keyof typeof OperatorReportCategory];
+
+
+export const OperatorReportCategory = {
+  accessibility: 'accessibility',
+  drainage: 'drainage',
+  lighting: 'lighting',
+  'public-space': 'public-space',
+  waste: 'waste',
+} as const;
+
+export interface OperatorReport {
+  id: string;
+  cityId: OperatorReportCityId;
+  cityName: string;
+  title: string;
+  description: string;
+  category: OperatorReportCategory;
+  locationLabel: string;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  photoUrl: string | null;
+  status: ReportStatus;
+  createdAt: string;
+  isDemo: boolean;
+  events: OperatorReportEvent[];
+}
+
+export interface OperatorReportPage {
+  items: OperatorReport[];
+  page: number;
+  limit: number;
+  total: number;
+  hasNextPage: boolean;
+}
+
+export interface OperatorReportUpdateInput {
+  status?: ReportStatus;
+  /** @maxLength 1000 */
+  publicNote?: string;
+  /** @maxLength 1000 */
+  internalNote?: string;
+}
+
 export interface ApiError {
   code: string;
   message: string;
 }
 
+/**
+ * Opaque API session bearer token.
+ */
+export type AuthorizationSessionHeaderParameter = string;
+
+export type BeginBrowserLoginParams = {
+returnTo?: string;
+};
+
+export type LogoutBrowserSessionParams = {
+returnTo?: string;
+};
+
 export type ListCityReportsParams = {
+/**
+ * @minimum 1
+ * @maximum 100000
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListOperatorReportsParams = {
+status?: ReportStatus;
 /**
  * @minimum 1
  * @maximum 100000

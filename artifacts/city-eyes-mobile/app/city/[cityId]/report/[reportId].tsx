@@ -1,8 +1,9 @@
 import React from "react";
-import { RefreshControl, StyleSheet, View } from "react-native";
+import { Image, RefreshControl, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { useGetCityReport } from "@workspace/api-client-react";
+import { getGetCityReportQueryKey, useGetCityReport } from "@workspace/api-client-react";
+import { Badge } from "@workspace/city-eyes-system/components/native/badge";
 import { Card } from "@workspace/city-eyes-system/components/native/card";
 import { Empty } from "@workspace/city-eyes-system/components/native/empty";
 import { Spinner } from "@workspace/city-eyes-system/components/native/spinner";
@@ -21,6 +22,13 @@ import {
   parseCityId,
 } from "@/components/app-ui";
 
+const statusLabels = {
+  open: "Aberto",
+  in_review: "Em análise",
+  in_progress: "Em andamento",
+  resolved: "Resolvido",
+} as const;
+
 export default function ReportDetailScreen() {
   const params = useLocalSearchParams<{
     cityId?: string | string[];
@@ -38,6 +46,7 @@ export default function ReportDetailScreen() {
       query: {
         enabled: Boolean(cityId && reportId),
         staleTime: 60_000,
+        queryKey: getGetCityReportQueryKey(cityId ?? "curitiba", reportId ?? ""),
       },
     },
   );
@@ -89,6 +98,9 @@ export default function ReportDetailScreen() {
                 </Typography>
               </View>
               {reportQuery.data.isDemo ? <ReportDemoBadge /> : null}
+              {!reportQuery.data.isDemo ? (
+                <Badge variant="outline">{statusLabels[reportQuery.data.status]}</Badge>
+              ) : null}
             </View>
 
             <DemoNotice />
@@ -103,14 +115,52 @@ export default function ReportDetailScreen() {
               </Typography>
             </Card>
 
+            {reportQuery.data.photoUrl ? (
+              <Image
+                source={{ uri: reportQuery.data.photoUrl }}
+                accessibilityLabel={`Foto do relato: ${reportQuery.data.title}`}
+                style={styles.photo}
+              />
+            ) : null}
+
             <Card style={styles.detailCard}>
               <Typography variant="eyebrow">DESCRIÇÃO</Typography>
               <Typography variant="body">{reportQuery.data.description}</Typography>
             </Card>
 
+            {reportQuery.data.latitude != null &&
+            reportQuery.data.longitude != null ? (
+              <Card style={styles.detailCard}>
+                <Typography variant="eyebrow">COORDENADAS PUBLICADAS</Typography>
+                <Typography variant="body">
+                  {reportQuery.data.latitude}, {reportQuery.data.longitude}
+                </Typography>
+              </Card>
+            ) : null}
+
+            {reportQuery.data.events.some((event) => event.publicNote) ? (
+              <Card style={styles.detailCard}>
+                <Typography variant="eyebrow">ATUALIZAÇÕES PÚBLICAS</Typography>
+                {reportQuery.data.events
+                  .filter((event) => event.publicNote)
+                  .map((event) => (
+                    <View key={event.id} style={styles.event}>
+                      <Typography variant="small">
+                        {statusLabels[event.statusAfter]}
+                      </Typography>
+                      <Typography variant="body">{event.publicNote}</Typography>
+                      <Typography variant="caption">
+                        {formatDate(event.createdAt)}
+                      </Typography>
+                    </View>
+                  ))}
+              </Card>
+            ) : null}
+
             <Typography variant="caption" style={styles.disclaimer}>
-              Este conteúdo fictício não confirma ocorrência, atendimento ou
-              providência de qualquer órgão público.
+              {reportQuery.data.isDemo
+                ? "Este conteúdo fictício não confirma ocorrência, atendimento ou providência de qualquer órgão público."
+                : "Relato enviado por uma pessoa. As informações não foram verificadas e não comprovam ocorrência, atendimento ou providência de qualquer órgão público."}
             </Typography>
           </>
         ) : null}
@@ -136,6 +186,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: nativeTheme.spacing.sm,
+  },
+  photo: {
+    borderRadius: nativeTheme.radius,
+    height: 240,
+    width: "100%",
+  },
+  event: {
+    gap: nativeTheme.spacing.xs,
   },
   disclaimer: {
     textAlign: "center",

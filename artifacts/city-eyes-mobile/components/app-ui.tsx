@@ -117,7 +117,7 @@ export function BrandHeader() {
         <Typography variant="small" style={styles.brandName}>
           CITY EYES
         </Typography>
-        <Typography variant="caption">cidade em foco · demonstração</Typography>
+        <Typography variant="caption">relatos urbanos por cidade</Typography>
       </View>
       <Feather name="eye" size={20} color={colors.primary} />
     </View>
@@ -159,10 +159,10 @@ export function DemoNotice() {
       <Feather name="info" size={18} color={colors.accent} />
       <View style={styles.demoCopy}>
         <Typography variant="eyebrow" style={{ color: colors.accent }}>
-          Dados de demonstração
+          Informação importante
         </Typography>
         <Typography variant="muted">
-          Neste protótipo, os relatos são fictícios; nenhuma prefeitura está conectada.
+          Relatos enviados ficam públicos, mas não são encaminhados automaticamente à prefeitura.
         </Typography>
       </View>
     </Card>
@@ -179,8 +179,8 @@ export function CityCard({
   const colors = useColors();
   const reportText =
     city.reportCount === 1
-      ? "1 relato demonstrativo"
-      : `${city.reportCount} relatos demonstrativos`;
+      ? "1 relato público"
+      : `${city.reportCount} relatos públicos`;
 
   return (
     <Pressable
@@ -225,7 +225,7 @@ export function ReportCard({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Abrir relato demonstrativo: ${report.title}`}
+      accessibilityLabel={`Abrir relato: ${report.title}`}
       testID={`report-${report.id}`}
       onPress={onPress}
       style={({ pressed }) => [
@@ -254,6 +254,9 @@ export function ReportCard({
             {categoryLabels[report.category]} · {formatDate(report.createdAt)}
           </Typography>
           <Typography variant="caption">{report.locationLabel}</Typography>
+          <Typography variant="caption">
+            {report.isDemo ? "Registro demonstrativo" : "Relato publicado"}
+          </Typography>
         </View>
         <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
       </Card>

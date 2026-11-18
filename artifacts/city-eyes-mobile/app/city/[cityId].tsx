@@ -5,8 +5,10 @@ import * as Haptics from "expo-haptics";
 import {
   useListCities,
   useListCityReports,
+  getListCityReportsQueryKey,
 } from "@workspace/api-client-react";
 import { Badge } from "@workspace/city-eyes-system/components/native/badge";
+import { Button } from "@workspace/city-eyes-system/components/native/button";
 import { Empty } from "@workspace/city-eyes-system/components/native/empty";
 import { Typography } from "@workspace/city-eyes-system/components/native/typography";
 import { useColors } from "@workspace/city-eyes-system/hooks/use-colors";
@@ -38,6 +40,7 @@ export default function CityReportsScreen() {
       query: {
         enabled: Boolean(cityId),
         staleTime: 60_000,
+        queryKey: getListCityReportsQueryKey(cityId ?? "curitiba", { page: 1, limit: 50 }),
       },
     },
   );
@@ -91,17 +94,26 @@ export default function CityReportsScreen() {
               <Typography variant="eyebrow">CONSULTA POR CIDADE</Typography>
               <Typography variant="display">{city?.name ?? "Relatos"}</Typography>
               <Typography variant="muted">
-                Relatos públicos de demonstração, sem vínculo com uma prefeitura.
+                Consulte relatos públicos desta cidade. Um envio não é encaminhado automaticamente à prefeitura.
               </Typography>
             </View>
 
             <DemoNotice />
 
+            <View style={styles.entryActions}>
+              <Button
+                testID="city-submit-report"
+                onPress={() => router.push({ pathname: "/city/[cityId]/report/new", params: { cityId } })}
+              >
+                Fazer um relato
+              </Button>
+            </View>
+
             <View style={styles.listHeading}>
               <Typography variant="title">Relatos nesta cidade</Typography>
               {reportsQuery.data ? (
                 <Badge variant="outline">
-                  {reportsQuery.data.total} exemplos
+                  {reportsQuery.data.total} relatos
                 </Badge>
               ) : null}
             </View>
@@ -161,5 +173,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: nativeTheme.spacing.sm,
+  },
+  entryActions: {
+    gap: nativeTheme.spacing.sm,
   },
 });

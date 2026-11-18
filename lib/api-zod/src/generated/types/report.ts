@@ -7,6 +7,8 @@
  */
 import type { ReportCategory } from './reportCategory';
 import type { ReportCityId } from './reportCityId';
+import type { ReportEvent } from './reportEvent';
+import type { ReportStatus } from './reportStatus';
 
 export interface Report {
   id: string;
@@ -18,4 +20,12 @@ export interface Report {
   locationLabel: string;
   createdAt: Date;
   isDemo: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  photoUrl: string | null;
+  status: ReportStatus;
+  events: ReportEvent[];
 }
