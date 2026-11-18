@@ -17,5 +17,7 @@ export interface OperatorReportEvent {
   publicNote: string | null;
   /** @nullable */
   internalNote: string | null;
+  /** @nullable */
+  evidenceImageUrl?: string | null;
   createdAt: Date;
 }

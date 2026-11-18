@@ -179,6 +179,11 @@ export const ListCityReportsQueryParams = zod.object({
   "limit": zod.coerce.number().int().min(1).max(listCityReportsQueryLimitMax).default(listCityReportsQueryLimitDefault)
 })
 
+export const listCityReportsResponseItemsItemSupportsCountDefault = 0;
+export const listCityReportsResponseItemsItemResolutionConfirmationsCountDefault = 0;
+export const listCityReportsResponseItemsItemUserHasSupportedDefault = false;
+export const listCityReportsResponseItemsItemUserHasConfirmedResolutionDefault = false;
+
 export const ListCityReportsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.string(),
@@ -194,11 +199,16 @@ export const ListCityReportsResponse = zod.object({
   "longitude": zod.number().nullable(),
   "photoUrl": zod.string().url().nullable(),
   "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "supportsCount": zod.number().int().default(listCityReportsResponseItemsItemSupportsCountDefault),
+  "resolutionConfirmationsCount": zod.number().int().default(listCityReportsResponseItemsItemResolutionConfirmationsCountDefault),
+  "userHasSupported": zod.boolean().default(listCityReportsResponseItemsItemUserHasSupportedDefault),
+  "userHasConfirmedResolution": zod.boolean().default(listCityReportsResponseItemsItemUserHasConfirmedResolutionDefault),
   "events": zod.array(zod.object({
   "id": zod.string(),
   "statusBefore": zod.union([zod.literal('open'),zod.literal('in_review'),zod.literal('in_progress'),zod.literal('resolved'),zod.literal(null)]).nullable(),
   "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
   "publicNote": zod.string().nullable(),
+  "evidenceImageUrl": zod.string().url().nullish(),
   "createdAt": zod.coerce.date()
 }))
 })),
@@ -249,6 +259,11 @@ export const CreateCityReportBody = zod.object({
   "consentToPublicDisplay": zod.literal(true)
 })
 
+export const createCityReportResponseSupportsCountDefault = 0;
+export const createCityReportResponseResolutionConfirmationsCountDefault = 0;
+export const createCityReportResponseUserHasSupportedDefault = false;
+export const createCityReportResponseUserHasConfirmedResolutionDefault = false;
+
 export const CreateCityReportResponse = zod.object({
   "id": zod.string(),
   "cityId": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa']),
@@ -263,11 +278,16 @@ export const CreateCityReportResponse = zod.object({
   "longitude": zod.number().nullable(),
   "photoUrl": zod.string().url().nullable(),
   "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "supportsCount": zod.number().int().default(createCityReportResponseSupportsCountDefault),
+  "resolutionConfirmationsCount": zod.number().int().default(createCityReportResponseResolutionConfirmationsCountDefault),
+  "userHasSupported": zod.boolean().default(createCityReportResponseUserHasSupportedDefault),
+  "userHasConfirmedResolution": zod.boolean().default(createCityReportResponseUserHasConfirmedResolutionDefault),
   "events": zod.array(zod.object({
   "id": zod.string(),
   "statusBefore": zod.union([zod.literal('open'),zod.literal('in_review'),zod.literal('in_progress'),zod.literal('resolved'),zod.literal(null)]).nullable(),
   "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
   "publicNote": zod.string().nullable(),
+  "evidenceImageUrl": zod.string().url().nullish(),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -281,6 +301,11 @@ export const GetCityReportParams = zod.object({
   "cityId": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa']),
   "reportId": zod.coerce.string()
 })
+
+export const getCityReportResponseSupportsCountDefault = 0;
+export const getCityReportResponseResolutionConfirmationsCountDefault = 0;
+export const getCityReportResponseUserHasSupportedDefault = false;
+export const getCityReportResponseUserHasConfirmedResolutionDefault = false;
 
 export const GetCityReportResponse = zod.object({
   "id": zod.string(),
@@ -296,13 +321,43 @@ export const GetCityReportResponse = zod.object({
   "longitude": zod.number().nullable(),
   "photoUrl": zod.string().url().nullable(),
   "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "supportsCount": zod.number().int().default(getCityReportResponseSupportsCountDefault),
+  "resolutionConfirmationsCount": zod.number().int().default(getCityReportResponseResolutionConfirmationsCountDefault),
+  "userHasSupported": zod.boolean().default(getCityReportResponseUserHasSupportedDefault),
+  "userHasConfirmedResolution": zod.boolean().default(getCityReportResponseUserHasConfirmedResolutionDefault),
   "events": zod.array(zod.object({
   "id": zod.string(),
   "statusBefore": zod.union([zod.literal('open'),zod.literal('in_review'),zod.literal('in_progress'),zod.literal('resolved'),zod.literal(null)]).nullable(),
   "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
   "publicNote": zod.string().nullable(),
+  "evidenceImageUrl": zod.string().url().nullish(),
   "createdAt": zod.coerce.date()
 }))
+})
+
+
+/**
+ * Authenticated citizens can support an open report or confirm a resolution once per type.
+ * @summary Confirm or support a public report
+ */
+export const CreateReportConfirmationParams = zod.object({
+  "cityId": zod.enum(['curitiba', 'londrina', 'maringa', 'ponta-grossa']),
+  "reportId": zod.coerce.string()
+})
+
+export const CreateReportConfirmationHeader = zod.object({
+  "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
+})
+
+export const CreateReportConfirmationBody = zod.object({
+  "type": zod.enum(['support', 'resolution'])
+})
+
+export const CreateReportConfirmationResponse = zod.object({
+  "ok": zod.boolean(),
+  "type": zod.enum(['support', 'resolution']),
+  "count": zod.number().int(),
+  "userHasConfirmed": zod.boolean()
 })
 
 
@@ -348,6 +403,9 @@ export const ListOperatorReportsHeader = zod.object({
   "Authorization": zod.string().optional().describe('Opaque API session bearer token.')
 })
 
+export const listOperatorReportsResponseItemsItemSupportsCountDefault = 0;
+export const listOperatorReportsResponseItemsItemResolutionConfirmationsCountDefault = 0;
+
 export const ListOperatorReportsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.string(),
@@ -361,6 +419,8 @@ export const ListOperatorReportsResponse = zod.object({
   "longitude": zod.number().nullable(),
   "photoUrl": zod.string().url().nullable(),
   "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "supportsCount": zod.number().int().default(listOperatorReportsResponseItemsItemSupportsCountDefault),
+  "resolutionConfirmationsCount": zod.number().int().default(listOperatorReportsResponseItemsItemResolutionConfirmationsCountDefault),
   "createdAt": zod.coerce.date(),
   "isDemo": zod.boolean(),
   "events": zod.array(zod.object({
@@ -369,6 +429,7 @@ export const ListOperatorReportsResponse = zod.object({
   "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
   "publicNote": zod.string().nullable(),
   "internalNote": zod.string().nullable(),
+  "evidenceImageUrl": zod.string().url().nullish(),
   "createdAt": zod.coerce.date()
 }))
 })),
@@ -395,13 +456,19 @@ export const updateOperatorReportBodyPublicNoteMax = 1000;
 
 export const updateOperatorReportBodyInternalNoteMax = 1000;
 
+export const updateOperatorReportBodyEvidenceImageObjectPathMax = 255;
+
 
 
 export const UpdateOperatorReportBody = zod.object({
   "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']).optional(),
   "publicNote": zod.string().max(updateOperatorReportBodyPublicNoteMax).optional(),
-  "internalNote": zod.string().max(updateOperatorReportBodyInternalNoteMax).optional()
+  "internalNote": zod.string().max(updateOperatorReportBodyInternalNoteMax).optional(),
+  "evidenceImageObjectPath": zod.string().max(updateOperatorReportBodyEvidenceImageObjectPathMax).optional()
 })
+
+export const updateOperatorReportResponseSupportsCountDefault = 0;
+export const updateOperatorReportResponseResolutionConfirmationsCountDefault = 0;
 
 export const UpdateOperatorReportResponse = zod.object({
   "id": zod.string(),
@@ -415,6 +482,8 @@ export const UpdateOperatorReportResponse = zod.object({
   "longitude": zod.number().nullable(),
   "photoUrl": zod.string().url().nullable(),
   "status": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
+  "supportsCount": zod.number().int().default(updateOperatorReportResponseSupportsCountDefault),
+  "resolutionConfirmationsCount": zod.number().int().default(updateOperatorReportResponseResolutionConfirmationsCountDefault),
   "createdAt": zod.coerce.date(),
   "isDemo": zod.boolean(),
   "events": zod.array(zod.object({
@@ -423,6 +492,7 @@ export const UpdateOperatorReportResponse = zod.object({
   "statusAfter": zod.enum(['open', 'in_review', 'in_progress', 'resolved']),
   "publicNote": zod.string().nullable(),
   "internalNote": zod.string().nullable(),
+  "evidenceImageUrl": zod.string().url().nullish(),
   "createdAt": zod.coerce.date()
 }))
 })

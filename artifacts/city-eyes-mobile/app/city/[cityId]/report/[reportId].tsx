@@ -1,9 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { Image, RefreshControl, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { getGetCityReportQueryKey, useGetCityReport } from "@workspace/api-client-react";
+import {
+  getGetCityReportQueryKey,
+  useCreateReportConfirmation,
+  useGetCityReport,
+} from "@workspace/api-client-react";
 import { Badge } from "@workspace/city-eyes-system/components/native/badge";
+import { Button } from "@workspace/city-eyes-system/components/native/button";
 import { Card } from "@workspace/city-eyes-system/components/native/card";
 import { Empty } from "@workspace/city-eyes-system/components/native/empty";
 import { Spinner } from "@workspace/city-eyes-system/components/native/spinner";
@@ -21,6 +26,7 @@ import {
   formatDate,
   parseCityId,
 } from "@/components/app-ui";
+import { useAuth } from "@/lib/auth";
 
 const statusLabels = {
   open: "Aberto",
@@ -39,6 +45,11 @@ export default function ReportDetailScreen() {
     ? params.reportId[0]
     : params.reportId;
   const colors = useColors();
+  const auth = useAuth();
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState("");
+  const createConfirmationMutation = useCreateReportConfirmation();
+
   const reportQuery = useGetCityReport(
     cityId ?? "curitiba",
     reportId ?? "",
@@ -56,6 +67,60 @@ export default function ReportDetailScreen() {
       router.replace({ pathname: "/city/[cityId]", params: { cityId } });
     } else {
       router.replace("/");
+    }
+  };
+
+  const handleSupport = async () => {
+    if (!auth.user) {
+      router.push("/auth");
+      return;
+    }
+    if (!cityId || !reportId) return;
+    setIsConfirming(true);
+    setConfirmationMessage("");
+    try {
+      await createConfirmationMutation.mutateAsync({
+        cityId,
+        reportId,
+        data: { type: "support" },
+      });
+      await reportQuery.refetch();
+      setConfirmationMessage("Apoio registrado com sucesso!");
+    } catch (err: any) {
+      if (err?.status === 409) {
+        setConfirmationMessage("Você já apoiou este relato.");
+      } else {
+        setConfirmationMessage("Não foi possível registrar o apoio agora.");
+      }
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  const handleConfirmResolution = async () => {
+    if (!auth.user) {
+      router.push("/auth");
+      return;
+    }
+    if (!cityId || !reportId) return;
+    setIsConfirming(true);
+    setConfirmationMessage("");
+    try {
+      await createConfirmationMutation.mutateAsync({
+        cityId,
+        reportId,
+        data: { type: "resolution" },
+      });
+      await reportQuery.refetch();
+      setConfirmationMessage("Confirmação de resolução registrada!");
+    } catch (err: any) {
+      if (err?.status === 409) {
+        setConfirmationMessage("Você já confirmou a resolução deste relato.");
+      } else {
+        setConfirmationMessage("Não foi possível registrar a confirmação agora.");
+      }
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -105,6 +170,73 @@ export default function ReportDetailScreen() {
 
             <DemoNotice />
 
+            {/* Cartão de Confirmações e Apoio Cidadão (B-12) */}
+            <Card style={styles.detailCard}>
+              <View style={styles.detailLabel}>
+                <Feather name="check-circle" size={16} color={colors.primary} />
+                <Typography variant="small">Acompanhamento e Confirmações</Typography>
+              </View>
+
+              {reportQuery.data.status !== "resolved" ? (
+                <View style={styles.confirmationRow}>
+                  <View style={styles.confirmationInfo}>
+                    <Typography variant="body">
+                      {reportQuery.data.supportsCount}{" "}
+                      {reportQuery.data.supportsCount === 1
+                        ? "cidadão apoiou este relato"
+                        : "cidadãos apoiaram este relato"}
+                    </Typography>
+                    <Typography variant="caption">
+                      Seu apoio ajuda a evidenciar a relevância do problema.
+                    </Typography>
+                  </View>
+                  {reportQuery.data.userHasSupported ? (
+                    <Badge variant="default">Você apoiou ✓</Badge>
+                  ) : (
+                    <Button
+                      testID="report-support-button"
+                      size="sm"
+                      disabled={isConfirming}
+                      onPress={handleSupport}
+                    >
+                      {isConfirming ? "Enviando…" : "Apoiar relato"}
+                    </Button>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.confirmationRow}>
+                  <View style={styles.confirmationInfo}>
+                    <Typography variant="body">
+                      {reportQuery.data.resolutionConfirmationsCount}{" "}
+                      {reportQuery.data.resolutionConfirmationsCount === 1
+                        ? "confirmação de resolução"
+                        : "confirmações de resolução"}
+                    </Typography>
+                    <Typography variant="caption">
+                      Confirme se o reparo foi verificado no local.
+                    </Typography>
+                  </View>
+                  {reportQuery.data.userHasConfirmedResolution ? (
+                    <Badge variant="default">Resolução confirmada ✓</Badge>
+                  ) : (
+                    <Button
+                      testID="report-confirm-resolution-button"
+                      size="sm"
+                      disabled={isConfirming}
+                      onPress={handleConfirmResolution}
+                    >
+                      {isConfirming ? "Enviando…" : "Confirmar reparo"}
+                    </Button>
+                  )}
+                </View>
+              )}
+              {confirmationMessage ? (
+                <Typography variant="caption" style={{ color: colors.primary }}>
+                  {confirmationMessage}
+                </Typography>
+              ) : null}
+            </Card>
+
             <Card style={styles.detailCard}>
               <View style={styles.detailLabel}>
                 <Feather name="map-pin" size={16} color={colors.primary} />
@@ -138,17 +270,31 @@ export default function ReportDetailScreen() {
               </Card>
             ) : null}
 
-            {reportQuery.data.events.some((event) => event.publicNote) ? (
+            {reportQuery.data.events.some(
+              (event) => event.publicNote || event.evidenceImageUrl,
+            ) ? (
               <Card style={styles.detailCard}>
                 <Typography variant="eyebrow">ATUALIZAÇÕES PÚBLICAS</Typography>
                 {reportQuery.data.events
-                  .filter((event) => event.publicNote)
+                  .filter((event) => event.publicNote || event.evidenceImageUrl)
                   .map((event) => (
                     <View key={event.id} style={styles.event}>
                       <Typography variant="small">
                         {statusLabels[event.statusAfter]}
                       </Typography>
-                      <Typography variant="body">{event.publicNote}</Typography>
+                      {event.publicNote ? (
+                        <Typography variant="body">{event.publicNote}</Typography>
+                      ) : null}
+                      {event.evidenceImageUrl ? (
+                        <View style={styles.evidenceContainer}>
+                          <Typography variant="caption">EVIDÊNCIA DE RESOLUÇÃO</Typography>
+                          <Image
+                            source={{ uri: event.evidenceImageUrl }}
+                            accessibilityLabel="Foto da resolução pela prefeitura"
+                            style={styles.evidencePhoto}
+                          />
+                        </View>
+                      ) : null}
                       <Typography variant="caption">
                         {formatDate(event.createdAt)}
                       </Typography>
@@ -187,6 +333,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: nativeTheme.spacing.sm,
   },
+  confirmationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: nativeTheme.spacing.md,
+  },
+  confirmationInfo: {
+    flex: 1,
+    gap: nativeTheme.spacing.xs,
+  },
   photo: {
     borderRadius: nativeTheme.radius,
     height: 240,
@@ -194,6 +350,15 @@ const styles = StyleSheet.create({
   },
   event: {
     gap: nativeTheme.spacing.xs,
+  },
+  evidenceContainer: {
+    gap: nativeTheme.spacing.xs,
+    marginTop: nativeTheme.spacing.xs,
+  },
+  evidencePhoto: {
+    borderRadius: nativeTheme.radius,
+    height: 180,
+    width: "100%",
   },
   disclaimer: {
     textAlign: "center",

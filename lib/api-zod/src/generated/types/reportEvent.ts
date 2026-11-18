@@ -15,5 +15,7 @@ export interface ReportEvent {
   statusAfter: ReportStatus;
   /** @nullable */
   publicNote: string | null;
+  /** @nullable */
+  evidenceImageUrl?: string | null;
   createdAt: Date;
 }

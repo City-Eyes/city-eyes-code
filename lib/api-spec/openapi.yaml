@@ -383,6 +383,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /cities/{cityId}/reports/{reportId}/confirmations:
+    post:
+      operationId: createReportConfirmation
+      tags: [public-directory]
+      summary: Confirm or support a public report
+      description: Authenticated citizens can support an open report or confirm a resolution once per type.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - name: cityId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [curitiba, londrina, maringa, ponta-grossa]
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReportConfirmationBody"
+      responses:
+        "200":
+          description: Confirmation registered or retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportConfirmationResponse"
+        "400":
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: City or report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: User has already submitted this confirmation type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /operator/cities:
     get:
       operationId: listOperatorCities
@@ -725,6 +781,9 @@ components:
           $ref: "#/components/schemas/ReportStatus"
         publicNote:
           type: [string, "null"]
+        evidenceImageUrl:
+          type: [string, "null"]
+          format: uri
         createdAt:
           type: string
           format: date-time
@@ -763,6 +822,18 @@ components:
           format: uri
         status:
           $ref: "#/components/schemas/ReportStatus"
+        supportsCount:
+          type: integer
+          default: 0
+        resolutionConfirmationsCount:
+          type: integer
+          default: 0
+        userHasSupported:
+          type: boolean
+          default: false
+        userHasConfirmedResolution:
+          type: boolean
+          default: false
         events:
           type: array
           items:
@@ -826,6 +897,9 @@ components:
           type: [string, "null"]
         internalNote:
           type: [string, "null"]
+        evidenceImageUrl:
+          type: [string, "null"]
+          format: uri
         createdAt:
           type: string
           format: date-time
@@ -874,6 +948,12 @@ components:
           format: uri
         status:
           $ref: "#/components/schemas/ReportStatus"
+        supportsCount:
+          type: integer
+          default: 0
+        resolutionConfirmationsCount:
+          type: integer
+          default: 0
         createdAt:
           type: string
           format: date-time
@@ -910,6 +990,30 @@ components:
         internalNote:
           type: string
           maxLength: 1000
+        evidenceImageObjectPath:
+          type: string
+          maxLength: 255
+    ReportConfirmationType:
+      type: string
+      enum: [support, resolution]
+    CreateReportConfirmationBody:
+      type: object
+      required: [type]
+      properties:
+        type:
+          $ref: "#/components/schemas/ReportConfirmationType"
+    ReportConfirmationResponse:
+      type: object
+      required: [ok, type, count, userHasConfirmed]
+      properties:
+        ok:
+          type: boolean
+        type:
+          $ref: "#/components/schemas/ReportConfirmationType"
+        count:
+          type: integer
+        userHasConfirmed:
+          type: boolean
     ApiError:
       type: object
       properties:

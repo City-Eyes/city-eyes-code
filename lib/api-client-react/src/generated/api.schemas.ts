@@ -195,6 +195,8 @@ export interface ReportEvent {
   statusAfter: ReportStatus;
   /** @nullable */
   publicNote: string | null;
+  /** @nullable */
+  evidenceImageUrl?: string | null;
   createdAt: string;
 }
 
@@ -236,6 +238,10 @@ export interface Report {
   /** @nullable */
   photoUrl: string | null;
   status: ReportStatus;
+  supportsCount?: number;
+  resolutionConfirmationsCount?: number;
+  userHasSupported?: boolean;
+  userHasConfirmedResolution?: boolean;
   events: ReportEvent[];
 }
 
@@ -286,6 +292,8 @@ export interface OperatorReportEvent {
   publicNote: string | null;
   /** @nullable */
   internalNote: string | null;
+  /** @nullable */
+  evidenceImageUrl?: string | null;
   createdAt: string;
 }
 
@@ -325,6 +333,8 @@ export interface OperatorReport {
   /** @nullable */
   photoUrl: string | null;
   status: ReportStatus;
+  supportsCount?: number;
+  resolutionConfirmationsCount?: number;
   createdAt: string;
   isDemo: boolean;
   events: OperatorReportEvent[];
@@ -344,6 +354,27 @@ export interface OperatorReportUpdateInput {
   publicNote?: string;
   /** @maxLength 1000 */
   internalNote?: string;
+  /** @maxLength 255 */
+  evidenceImageObjectPath?: string;
+}
+
+export type ReportConfirmationType = typeof ReportConfirmationType[keyof typeof ReportConfirmationType];
+
+
+export const ReportConfirmationType = {
+  support: 'support',
+  resolution: 'resolution',
+} as const;
+
+export interface CreateReportConfirmationBody {
+  type: ReportConfirmationType;
+}
+
+export interface ReportConfirmationResponse {
+  ok: boolean;
+  type: ReportConfirmationType;
+  count: number;
+  userHasConfirmed: boolean;
 }
 
 export interface ApiError {

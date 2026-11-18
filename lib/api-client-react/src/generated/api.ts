@@ -29,6 +29,7 @@ import type {
   AuthUserEnvelope,
   BeginBrowserLoginParams,
   City,
+  CreateReportConfirmationBody,
   HealthStatus,
   ListCityReportsParams,
   ListOperatorReportsParams,
@@ -42,6 +43,7 @@ import type {
   OperatorReportUpdateInput,
   ReadinessStatus,
   Report,
+  ReportConfirmationResponse,
   ReportInput,
   ReportPage,
   UploadUrlRequest,
@@ -1465,6 +1467,98 @@ export function useGetCityReport<TData = Awaited<ReturnType<typeof getCityReport
 
 
 
+
+export const getCreateReportConfirmationUrl = (cityId: 'curitiba' | 'londrina' | 'maringa' | 'ponta-grossa',
+    reportId: string,) => {
+
+
+
+
+  return `/api/cities/${cityId}/reports/${reportId}/confirmations`
+}
+
+/**
+ * Authenticated citizens can support an open report or confirm a resolution once per type.
+ * @summary Confirm or support a public report
+ */
+export const createReportConfirmation = async (cityId: 'curitiba' | 'londrina' | 'maringa' | 'ponta-grossa',
+    reportId: string,
+    createReportConfirmationBody: CreateReportConfirmationBody, options?: Parameters<typeof customFetch>[1]): Promise<ReportConfirmationResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ReportConfirmationResponse>(getCreateReportConfirmationUrl(cityId,reportId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createReportConfirmationBody)
+  }
+);}
+
+
+
+
+
+export const getCreateReportConfirmationMutationKey = () => ['createReportConfirmation'] as const;
+
+export const getCreateReportConfirmationMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReportConfirmation>>, TError,CreateReportConfirmationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createReportConfirmation>>, TError,CreateReportConfirmationMutationVariables, TContext> => {
+
+const mutationKey = getCreateReportConfirmationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createReportConfirmation>>, CreateReportConfirmationMutationVariables> = (props) => {
+          const {cityId,reportId,data} = props ?? {};
+
+          return  createReportConfirmation(cityId,reportId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateReportConfirmationMutationResult = NonNullable<Awaited<ReturnType<typeof createReportConfirmation>>>
+    export type CreateReportConfirmationMutationBody = BodyType<CreateReportConfirmationBody>
+    export type CreateReportConfirmationMutationError = ErrorType<ApiError>
+    export type CreateReportConfirmationMutationVariables = {cityId: 'curitiba' | 'londrina' | 'maringa' | 'ponta-grossa';reportId: string;data: BodyType<CreateReportConfirmationBody>}
+
+    /**
+ * @summary Confirm or support a public report
+ */
+export const useCreateReportConfirmation = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReportConfirmation>>, TError,CreateReportConfirmationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createReportConfirmation>>,
+        TError,
+        CreateReportConfirmationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateReportConfirmationMutationOptions(options), queryClient);
+    }
 
 export const getListOperatorCitiesUrl = () => {
 

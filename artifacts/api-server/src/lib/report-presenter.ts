@@ -9,8 +9,10 @@ export function buildPublicPhotoUrl(req: Request, objectPath: string): string {
   if (!host || typeof host !== "string") {
     throw new Error("Request host is unavailable.");
   }
-  const path = objectPath
-    .slice("/objects/".length)
+  const cleanPath = objectPath.startsWith("/objects/")
+    ? objectPath.slice("/objects/".length)
+    : objectPath.replace(/^\/+/, "");
+  const path = cleanPath
     .split("/")
     .map(encodeURIComponent)
     .join("/");

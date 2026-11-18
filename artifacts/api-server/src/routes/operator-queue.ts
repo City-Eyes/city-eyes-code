@@ -10,7 +10,7 @@ import {
   UpdateOperatorReportParams,
   UpdateOperatorReportResponse,
 } from "@workspace/api-zod";
-import { db, cityMemberships, reportEvents, reports } from "@workspace/db";
+import { db, cityMemberships, reportConfirmations, reportEvents, reports } from "@workspace/db";
 import { cities } from "@workspace/db/schema";
 import {
   and,
@@ -57,22 +57,23 @@ export function createOperatorQueueRouter(): IRouter {
             state: cities.state,
             openReportCount: count(reports.id),
           })
-          .from(cityMemberships)
-          .innerJoin(cities, eq(cityMemberships.cityId, cities.id))
-          .leftJoin(
-            reports,
+          .from(cities)
+          .innerJoin(
+            cityMemberships,
             and(
-              eq(reports.cityId, cities.id),
-              ne(reports.status, "resolved"),
-            ),
-          )
-          .where(
-            and(
+              eq(cityMemberships.cityId, cities.id),
               eq(cityMemberships.userId, req.user!.id),
               or(
                 eq(cityMemberships.role, "operator"),
                 eq(cityMemberships.role, "city_admin"),
               ),
+            ),
+          )
+          .leftJoin(
+            reports,
+            and(
+              eq(reports.cityId, cities.id),
+              ne(reports.status, "resolved"),
             ),
           )
           .groupBy(cities.id, cities.name, cities.state)
@@ -88,13 +89,13 @@ export function createOperatorQueueRouter(): IRouter {
       } catch (error) {
         req.log.error(
           { errorName: error instanceof Error ? error.name : "UnknownError" },
-          "Could not load operator cities",
+          "Could not list operator cities",
         );
         return sendApiError(
           res,
           500,
-          "OPERATOR_QUEUE_UNAVAILABLE",
-          "Não foi possível carregar suas cidades agora.",
+          "OPERATOR_CITIES_UNAVAILABLE",
+          "Não foi possível carregar as cidades autorizadas.",
         );
       }
     },
@@ -105,16 +106,23 @@ export function createOperatorQueueRouter(): IRouter {
     requireAuthenticated,
     async (req: Request, res: Response) => {
       const path = ListOperatorReportsParams.safeParse(req.params);
-      const query = ListOperatorReportsQueryParams.safeParse(req.query);
-      if (!path.success || !query.success) {
+      if (!path.success) {
         return sendApiError(
           res,
           400,
-          "INVALID_QUEUE_FILTER",
-          "Confira a cidade, o filtro e a paginação.",
+          "INVALID_CITY",
+          "A cidade selecionada não é válida.",
         );
       }
-
+      const query = ListOperatorReportsQueryParams.safeParse(req.query);
+      if (!query.success) {
+        return sendApiError(
+          res,
+          400,
+          "INVALID_PAGINATION",
+          "Informe parâmetros válidos para a fila.",
+        );
+      }
       try {
         const access = await getAuthorizedCity(req.user!.id, path.data.cityId);
         if (access === "missing") {
@@ -133,7 +141,6 @@ export function createOperatorQueueRouter(): IRouter {
             "Sua conta não tem acesso à fila desta cidade.",
           );
         }
-
         const criteria = query.data.status
           ? and(
               eq(reports.cityId, path.data.cityId),
@@ -171,7 +178,9 @@ export function createOperatorQueueRouter(): IRouter {
           )
           .limit(query.data.limit)
           .offset(offset);
-        const events = rows.length
+
+        const reportIds = rows.map((row) => row.id);
+        const events = reportIds.length
           ? await db
               .select({
                 id: reportEvents.id,
@@ -180,34 +189,70 @@ export function createOperatorQueueRouter(): IRouter {
                 statusAfter: reportEvents.statusAfter,
                 publicNote: reportEvents.publicNote,
                 internalNote: reportEvents.internalNote,
+                evidenceImageObjectPath: reportEvents.evidenceImageObjectPath,
                 createdAt: reportEvents.createdAt,
               })
               .from(reportEvents)
-              .where(inArray(reportEvents.reportId, rows.map((row) => row.id)))
+              .where(inArray(reportEvents.reportId, reportIds))
               .orderBy(asc(reportEvents.createdAt), asc(reportEvents.id))
           : [];
-        const eventsByReport = groupEvents(events);
+        const eventsByReport = groupEvents(req, events);
+
+        const countsByReport = new Map<
+          string,
+          { supportsCount: number; resolutionConfirmationsCount: number }
+        >();
+        if (reportIds.length) {
+          const counts = await db
+            .select({
+              reportId: reportConfirmations.reportId,
+              type: reportConfirmations.type,
+              total: count(),
+            })
+            .from(reportConfirmations)
+            .where(inArray(reportConfirmations.reportId, reportIds))
+            .groupBy(reportConfirmations.reportId, reportConfirmations.type);
+
+          for (const c of counts) {
+            const entry = countsByReport.get(c.reportId) ?? {
+              supportsCount: 0,
+              resolutionConfirmationsCount: 0,
+            };
+            if (c.type === "support") entry.supportsCount = Number(c.total);
+            if (c.type === "resolution") entry.resolutionConfirmationsCount = Number(c.total);
+            countsByReport.set(c.reportId, entry);
+          }
+        }
+
         const total = Number(totalRow?.total ?? 0);
         return res.json(
           ListOperatorReportsResponse.parse({
-            items: rows.map((row) => ({
-              id: row.id,
-              cityId: row.cityId,
-              cityName: row.cityName,
-              title: row.title,
-              description: row.description,
-              category: row.category,
-              locationLabel: row.locationLabel,
-              latitude: row.latitude,
-              longitude: row.longitude,
-              photoUrl: row.imageObjectPath
-                ? buildPublicPhotoUrl(req, row.imageObjectPath)
-                : null,
-              status: row.status,
-              createdAt: row.createdAt,
-              isDemo: row.isDemo,
-              events: eventsByReport.get(row.id) ?? [],
-            })),
+            items: rows.map((row) => {
+              const c = countsByReport.get(row.id) ?? {
+                supportsCount: 0,
+                resolutionConfirmationsCount: 0,
+              };
+              return {
+                id: row.id,
+                cityId: row.cityId,
+                cityName: row.cityName,
+                title: row.title,
+                description: row.description,
+                category: row.category,
+                locationLabel: row.locationLabel,
+                latitude: row.latitude,
+                longitude: row.longitude,
+                photoUrl: row.imageObjectPath
+                  ? buildPublicPhotoUrl(req, row.imageObjectPath)
+                  : null,
+                status: row.status,
+                supportsCount: c.supportsCount,
+                resolutionConfirmationsCount: c.resolutionConfirmationsCount,
+                createdAt: row.createdAt,
+                isDemo: row.isDemo,
+                events: eventsByReport.get(row.id) ?? [],
+              };
+            }),
             page: query.data.page,
             limit: query.data.limit,
             total,
@@ -234,31 +279,28 @@ export function createOperatorQueueRouter(): IRouter {
     requireAuthenticated,
     async (req: Request, res: Response) => {
       const path = UpdateOperatorReportParams.safeParse(req.params);
+      if (!path.success) {
+        return sendApiError(
+          res,
+          400,
+          "INVALID_REPORT",
+          "A cidade ou o relato selecionado não é válido.",
+        );
+      }
       const body = UpdateOperatorReportBody.safeParse(req.body);
-      if (!path.success || !body.success) {
+      if (!body.success) {
         return sendApiError(
           res,
           400,
           "INVALID_REPORT_UPDATE",
-          "Confira a atualização e tente novamente.",
+          "Dados inválidos para a atualização do relato.",
         );
       }
-      const publicNote = body.data.publicNote?.trim() || undefined;
-      const internalNote = body.data.internalNote?.trim() || undefined;
-      if (
-        body.data.status === undefined &&
-        publicNote === undefined &&
-        internalNote === undefined
-      ) {
-        return sendApiError(
-          res,
-          400,
-          "EMPTY_REPORT_UPDATE",
-          "Informe um novo status ou uma nota.",
-        );
-      }
-
       try {
+        const publicNote = body.data.publicNote?.trim() || null;
+        const internalNote = body.data.internalNote?.trim() || null;
+        const evidenceImageObjectPath = body.data.evidenceImageObjectPath?.trim() || null;
+
         const updateResult = await db.transaction(async (tx) => {
           const access = await getAuthorizedCity(req.user!.id, path.data.cityId);
           if (access === "missing") return { error: "CITY_NOT_FOUND" as const };
@@ -280,8 +322,8 @@ export function createOperatorQueueRouter(): IRouter {
           const nextStatus = body.data.status ?? existing.status;
           const isStatusChanged = nextStatus !== existing.status;
 
-          // Se o status não mudou e nenhuma nota foi informada, rejeita como atualização vazia
-          if (!isStatusChanged && !publicNote && !internalNote) {
+          // Se o status não mudou e nenhuma nota ou evidência foi informada, rejeita como atualização vazia
+          if (!isStatusChanged && !publicNote && !internalNote && !evidenceImageObjectPath) {
             return { error: "EMPTY_REPORT_UPDATE" as const };
           }
 
@@ -308,6 +350,7 @@ export function createOperatorQueueRouter(): IRouter {
             statusAfter: nextStatus,
             publicNote: publicNote ?? null,
             internalNote: internalNote ?? null,
+            evidenceImageObjectPath,
             actorId: req.user!.id,
             createdAt,
           });
@@ -318,6 +361,7 @@ export function createOperatorQueueRouter(): IRouter {
               statusAfter: reportEvents.statusAfter,
               publicNote: reportEvents.publicNote,
               internalNote: reportEvents.internalNote,
+              evidenceImageObjectPath: reportEvents.evidenceImageObjectPath,
               createdAt: reportEvents.createdAt,
             })
             .from(reportEvents)
@@ -328,7 +372,30 @@ export function createOperatorQueueRouter(): IRouter {
             .from(cities)
             .where(eq(cities.id, existing.cityId))
             .limit(1);
-          return { report, history, cityName: city?.name ?? "" };
+
+          const confirmationCounts = await tx
+            .select({
+              type: reportConfirmations.type,
+              total: count(),
+            })
+            .from(reportConfirmations)
+            .where(eq(reportConfirmations.reportId, existing.id))
+            .groupBy(reportConfirmations.type);
+
+          let supportsCount = 0;
+          let resolutionConfirmationsCount = 0;
+          for (const c of confirmationCounts) {
+            if (c.type === "support") supportsCount = Number(c.total);
+            if (c.type === "resolution") resolutionConfirmationsCount = Number(c.total);
+          }
+
+          return {
+            report,
+            history,
+            cityName: city?.name ?? "",
+            supportsCount,
+            resolutionConfirmationsCount,
+          };
         });
 
         if ("error" in updateResult) {
@@ -359,7 +426,7 @@ export function createOperatorQueueRouter(): IRouter {
                 res,
                 400,
                 "EMPTY_REPORT_UPDATE",
-                "Informe um novo status ou uma nota.",
+                "Informe um novo status, uma nota ou uma evidência.",
               );
             case "INVALID_STATUS_TRANSITION":
               return sendApiError(
@@ -386,9 +453,21 @@ export function createOperatorQueueRouter(): IRouter {
               ? buildPublicPhotoUrl(req, updated.report.imageObjectPath)
               : null,
             status: updated.report.status,
+            supportsCount: updated.supportsCount,
+            resolutionConfirmationsCount: updated.resolutionConfirmationsCount,
             createdAt: updated.report.createdAt,
             isDemo: updated.report.isDemo,
-            events: updated.history,
+            events: updated.history.map((event) => ({
+              id: event.id,
+              statusBefore: event.statusBefore,
+              statusAfter: event.statusAfter,
+              publicNote: event.publicNote,
+              internalNote: event.internalNote,
+              evidenceImageUrl: event.evidenceImageObjectPath
+                ? buildPublicPhotoUrl(req, event.evidenceImageObjectPath)
+                : null,
+              createdAt: event.createdAt,
+            })),
           }),
         );
       } catch (error) {
@@ -437,6 +516,7 @@ async function getAuthorizedCity(
 }
 
 function groupEvents(
+  req: Request,
   events: Array<{
     id: string;
     reportId: string;
@@ -444,6 +524,7 @@ function groupEvents(
     statusAfter: (typeof reports.$inferSelect)["status"];
     publicNote: string | null;
     internalNote: string | null;
+    evidenceImageObjectPath: string | null;
     createdAt: Date;
   }>,
 ) {
@@ -455,13 +536,19 @@ function groupEvents(
       statusAfter: (typeof reports.$inferSelect)["status"];
       publicNote: string | null;
       internalNote: string | null;
+      evidenceImageUrl: string | null;
       createdAt: Date;
     }>
   >();
   for (const event of events) {
-    const { reportId, ...publicFields } = event;
+    const { reportId, evidenceImageObjectPath, ...publicFields } = event;
     const current = map.get(reportId) ?? [];
-    current.push(publicFields);
+    current.push({
+      ...publicFields,
+      evidenceImageUrl: evidenceImageObjectPath
+        ? buildPublicPhotoUrl(req, evidenceImageObjectPath)
+        : null,
+    });
     map.set(reportId, current);
   }
   return map;

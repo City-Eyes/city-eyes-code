@@ -27,5 +27,9 @@ export interface Report {
   /** @nullable */
   photoUrl: string | null;
   status: ReportStatus;
+  supportsCount?: number;
+  resolutionConfirmationsCount?: number;
+  userHasSupported?: boolean;
+  userHasConfirmedResolution?: boolean;
   events: ReportEvent[];
 }
