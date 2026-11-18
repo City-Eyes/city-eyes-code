@@ -150,12 +150,14 @@ export function createReportSubmissionRouter(
           );
         }
 
+        let finalObjectPath: string;
         try {
-          await storage.verifyImage(
+          const verified = await storage.verifyImage(
             upload.objectPath,
             upload.contentType,
             upload.expectedSize,
           );
+          finalObjectPath = verified.objectPath;
         } catch (error) {
           if (error instanceof ObjectNotFoundError) {
             return sendApiError(
@@ -187,13 +189,12 @@ export function createReportSubmissionRouter(
           );
         }
 
-        const publicPhotoUrl = buildPublicPhotoUrl(req, upload.objectPath);
+        const publicPhotoUrl = buildPublicPhotoUrl(req, finalObjectPath);
         const reportId = randomUUID();
         const eventId = randomUUID();
         const retentionDeadline = new Date(
           now.getTime() + PHOTO_RETENTION_DAYS * 24 * 60 * 60 * 1000,
         );
-        let aclChanged = false;
         let result: (ReportRecord & { cityName: string }) | undefined;
 
         try {
@@ -220,11 +221,10 @@ export function createReportSubmissionRouter(
 
             try {
               await storage.setVisibility(
-                upload.objectPath,
+                finalObjectPath,
                 req.user!.id,
                 "public",
               );
-              aclChanged = true;
             } catch {
               throw new PhotoStorageError();
             }
@@ -241,7 +241,7 @@ export function createReportSubmissionRouter(
                 locationLabel: input.locationLabel,
                 latitude: input.latitude,
                 longitude: input.longitude,
-                imageObjectPath: upload.objectPath,
+                imageObjectPath: finalObjectPath,
                 captureSource: input.captureSource,
                 publicConsentAt: now,
                 status: "open",
@@ -262,21 +262,27 @@ export function createReportSubmissionRouter(
             });
             await tx
               .update(mediaUploads)
-              .set({ reportId, expiresAt: retentionDeadline })
+              .set({ reportId })
               .where(eq(mediaUploads.objectPath, upload.objectPath));
+            await tx.insert(mediaUploads).values({
+              objectPath: finalObjectPath,
+              ownerId: req.user!.id,
+              contentType: upload.contentType,
+              expectedSize: upload.expectedSize,
+              requestedAt: now,
+              uploadUrlExpiresAt: now,
+              expiresAt: retentionDeadline,
+              reportId,
+            });
             result = { ...created, cityName: city.name };
           });
         } catch (error) {
-          if (aclChanged) {
+          {
             try {
-              await storage.setVisibility(
-                upload.objectPath,
-                req.user!.id,
-                "private",
-              );
+              await storage.deleteObject(finalObjectPath);
             } catch {
               try {
-                await storage.deleteObject(upload.objectPath);
+                await storage.setVisibility(finalObjectPath, req.user!.id, "private");
               } catch (deleteError) {
                 req.log.error(
                   {
