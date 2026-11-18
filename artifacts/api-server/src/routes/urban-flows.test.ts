@@ -22,7 +22,7 @@ import {
 } from "../lib/objectStorage";
 import { sweepExpiredPhotos } from "../lib/photo-retention";
 import { createApp } from "../app";
-import { isAllowedMobileRedirectProtocol } from "./auth";
+import { isAllowedMobileRedirectProtocol, isAllowedMobileRedirectUri } from "./auth";
 
 class FakeImageStorage implements ImageStorage {
   readonly paths = new Set<string>();
@@ -401,12 +401,35 @@ test("image signature validation rejects mismatched metadata", () => {
   assert.equal(isSupportedImageSignature(Buffer.from("GIF89a"), "image/gif"), false);
 });
 
-test("native authorization callback accepts the configured Expo scheme only", () => {
+test("native authorization callback accepts exact allowlist redirect uris only", () => {
   const mobileConfig = JSON.parse(
     readFileSync(new URL("../../../city-eyes-mobile/app.json", import.meta.url), "utf8"),
   ) as { expo: { scheme: string } };
+  const nativeRedirect = `${mobileConfig.expo.scheme}://`;
+
+  // Valid native redirect (both production and non-production)
+  assert.equal(isAllowedMobileRedirectUri(nativeRedirect, false), true);
+  assert.equal(isAllowedMobileRedirectUri(nativeRedirect, true), true);
+
+  // Expo development redirect: allowed only outside production
+  assert.equal(isAllowedMobileRedirectUri("exp://127.0.0.1:8081", false), true);
+  assert.equal(isAllowedMobileRedirectUri("exp://127.0.0.1:8081", true), false);
+
+  // http / https rejected in production
+  assert.equal(isAllowedMobileRedirectUri("http://localhost:8081", true), false);
+  assert.equal(isAllowedMobileRedirectUri("https://localhost:8081", true), false);
+
+  // Evil redirects: https://evil and city-eyes-mobile://evil
+  assert.equal(isAllowedMobileRedirectUri("https://evil", false), false);
+  assert.equal(isAllowedMobileRedirectUri("https://evil", true), false);
+  assert.equal(isAllowedMobileRedirectUri(`${mobileConfig.expo.scheme}://evil`, false), false);
+  assert.equal(isAllowedMobileRedirectUri(`${mobileConfig.expo.scheme}://evil`, true), false);
+
+  // Invalid schemes
+  assert.equal(isAllowedMobileRedirectUri("cityeyes://", false), false);
+  assert.equal(isAllowedMobileRedirectUri("javascript:alert(1)", false), false);
+
+  // Legacy protocol helper consistency
   assert.equal(isAllowedMobileRedirectProtocol(`${mobileConfig.expo.scheme}:`), true);
-  assert.equal(isAllowedMobileRedirectProtocol("exp:"), true);
   assert.equal(isAllowedMobileRedirectProtocol("cityeyes:"), false);
-  assert.equal(isAllowedMobileRedirectProtocol("javascript:"), false);
 });

@@ -252,10 +252,7 @@ router.post("/mobile-auth/token-exchange", async (req: Request, res: Response) =
     );
   }
   const { code, code_verifier, redirect_uri, state, nonce } = parsed.data;
-  let callbackUrl: URL;
-  try {
-    callbackUrl = new URL(redirect_uri);
-  } catch {
+  if (!isAllowedMobileRedirectUri(redirect_uri)) {
     return sendApiError(
       res,
       400,
@@ -263,7 +260,10 @@ router.post("/mobile-auth/token-exchange", async (req: Request, res: Response) =
       "O retorno do aplicativo não é válido.",
     );
   }
-  if (!isAllowedMobileRedirectProtocol(callbackUrl.protocol)) {
+  let callbackUrl: URL;
+  try {
+    callbackUrl = new URL(redirect_uri);
+  } catch {
     return sendApiError(
       res,
       400,
@@ -305,6 +305,40 @@ router.post("/mobile-auth/token-exchange", async (req: Request, res: Response) =
     );
   }
 });
+
+export function isAllowedMobileRedirectUri(
+  redirectUri: string,
+  isProduction: boolean = process.env.NODE_ENV === "production",
+): boolean {
+  let url: URL;
+  try {
+    url = new URL(redirectUri);
+  } catch {
+    return false;
+  }
+
+  if (redirectUri === "city-eyes-mobile://" || redirectUri === "city-eyes-mobile:///") {
+    return true;
+  }
+
+  if (isProduction) {
+    return false;
+  }
+
+  if (url.protocol === "exp:") {
+    return true;
+  }
+
+  if (url.protocol === "http:" || url.protocol === "https:") {
+    return (
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname.endsWith(".replit.dev")
+    );
+  }
+
+  return false;
+}
 
 export function isAllowedMobileRedirectProtocol(protocol: string) {
   return ["http:", "https:", "exp:", "city-eyes-mobile:"].includes(protocol);
