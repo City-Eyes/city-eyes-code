@@ -25,4 +25,11 @@ pnpm --filter @workspace/mockup-sandbox test
 pnpm --filter @workspace/api-server run dev
 ```
 
+## Prontidão do banco e alertas
+
+- `/api/healthz` informa se a API está ativa; não testa o banco. `/api/readyz` faz uma consulta simples e retorna `503` quando o PostgreSQL não está acessível.
+- A API registra somente a mudança de estado para indisponível e a recuperação, sem incluir mensagens, credenciais ou URLs de conexão. Isso reduz repetição no log, mas só detecta falhas quando o endpoint é consultado.
+- O [Monitoring do Replit](https://docs.replit.com/features/publishing/monitoring-a-deployment) não acompanha endpoints personalizados. O [monitoramento do banco](https://docs.replit.com/features/data-and-storage/monitor-your-database) mostra consultas e desempenho; ele não confirma um alerta de indisponibilidade. O alerta de uptime do app publicado cobre quando a aplicação fica fora do ar, não uma falha isolada do banco.
+- Para notificação específica de falha do banco, é necessário um monitor externo que consulte `/api/readyz`. Nenhum serviço externo ou destinatário foi configurado; isso depende de aprovação do proprietário.
+
 Não registre secrets no repositório. Consulte [CONTRIBUTING](CONTRIBUTING.md), [AGENTS](AGENTS.md) e [LICENSE](LICENSE).

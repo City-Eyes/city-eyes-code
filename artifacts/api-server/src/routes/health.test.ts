@@ -4,12 +4,17 @@ import type { AddressInfo } from "node:net";
 import express from "express";
 import { createHealthRouter } from "./health";
 
+type DatabaseState = "unavailable" | "recovered";
+
 let server: ReturnType<ReturnType<typeof express>["listen"]>;
 let baseUrl = "";
 
-async function startServer(checkDatabase: () => Promise<unknown>) {
+async function startServer(
+  checkDatabase: () => Promise<unknown>,
+  logDatabaseState: (state: DatabaseState) => void = () => undefined,
+) {
   const app = express();
-  app.use("/api", createHealthRouter(checkDatabase));
+  app.use("/api", createHealthRouter(checkDatabase, logDatabaseState));
 
   await new Promise<void>((resolve, reject) => {
     server = app.listen(0, "127.0.0.1", () => {
@@ -72,4 +77,34 @@ test("readiness returns 503 and hides database errors", async () => {
     dependencies: { database: "unavailable" },
   });
   assert.equal(body.includes("private connection details"), false);
+});
+
+test("readiness emits outage and recovery transitions once without error details", async () => {
+  await stopServer();
+  const states: DatabaseState[] = [];
+  let databaseAvailable = false;
+  await startServer(
+    async () => {
+      if (!databaseAvailable) {
+        throw new Error("private connection details");
+      }
+    },
+    (state) => states.push(state),
+  );
+
+  const firstFailure = await fetch(`${baseUrl}/readyz`);
+  const repeatedFailure = await fetch(`${baseUrl}/readyz`);
+  databaseAvailable = true;
+  const recovery = await fetch(`${baseUrl}/readyz`);
+  const repeatedRecovery = await fetch(`${baseUrl}/readyz`);
+
+  assert.equal(firstFailure.status, 503);
+  assert.equal(repeatedFailure.status, 503);
+  assert.equal(recovery.status, 200);
+  assert.equal(repeatedRecovery.status, 200);
+  assert.deepEqual(states, ["unavailable", "recovered"]);
+  assert.equal(
+    JSON.stringify(states).includes("private connection details"),
+    false,
+  );
 });
