@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+---
+# Fluxo E2E: Fila Municipal de Relatos Urbanos (B-18 / B-13)
+# 1. Abrir app via Expo
+- openLink: "exp://127.0.0.1:8081"
+- assertVisible: "Escolha uma cidade"
+
+# 2. Navegar para a cidade de Curitiba
+- tapOn:
+    id: "city-curitiba"
+- assertVisible: "Curitiba"
+- assertVisible: "Fazer um relato"
+
+# 3. Acessar a Fila Municipal
+- tapOn:
+    id: "city-open-operator-queue-shortcut"
+- assertVisible: "Fila da cidade"
+- assertVisible: "A fila municipal exige uma conta autorizada."
+
+# 4. Retornar à tela da cidade
+- tapOn:
+    id: "back-button"
+- assertVisible: "Curitiba"

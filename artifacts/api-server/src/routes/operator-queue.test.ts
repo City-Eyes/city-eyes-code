@@ -165,6 +165,62 @@ test("municipal queue restricts access and keeps internal notes private", async 
   );
   assert.equal(crossCityUpdate.status, 403);
 
+  // 1. Rejeição de atualização sem notas e sem mudança de status
+  const emptyUpdate = await fetch(
+    `${baseUrlRef.value}/operator/cities/curitiba/reports/${reportId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: "open" }),
+    },
+  );
+  assert.equal(emptyUpdate.status, 400);
+  const emptyErr = (await emptyUpdate.json()) as { code: string };
+  assert.equal(emptyErr.code, "EMPTY_REPORT_UPDATE");
+
+  // 2. Adicionar apenas nota interna sem alterar status (status: open)
+  const noteOnlyUpdate = await fetch(
+    `${baseUrlRef.value}/operator/cities/curitiba/reports/${reportId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "open",
+        internalNote: "Nota preliminar de triagem.",
+      }),
+    },
+  );
+  assert.equal(noteOnlyUpdate.status, 200);
+  const noteOnlyResult = (await noteOnlyUpdate.json()) as {
+    status: string;
+    events: Array<{ internalNote: string | null }>;
+  };
+  assert.equal(noteOnlyResult.status, "open");
+  assert.equal(noteOnlyResult.events.at(-1)?.internalNote, "Nota preliminar de triagem.");
+
+  // 3. Rejeição de transição inválida (open -> resolved direto)
+  const invalidJump = await fetch(
+    `${baseUrlRef.value}/operator/cities/curitiba/reports/${reportId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: "resolved" }),
+    },
+  );
+  assert.equal(invalidJump.status, 400);
+  const jumpErr = (await invalidJump.json()) as { code: string };
+  assert.equal(jumpErr.code, "INVALID_STATUS_TRANSITION");
+
+  // 4. Transição válida para in_progress
   const update = await fetch(
     `${baseUrlRef.value}/operator/cities/curitiba/reports/${reportId}`,
     {
@@ -191,6 +247,42 @@ test("municipal queue restricts access and keeps internal notes private", async 
     "Confirmar responsável pela vistoria.",
   );
 
+  // 5. Transição válida de in_progress para resolved
+  const resolveUpdate = await fetch(
+    `${baseUrlRef.value}/operator/cities/curitiba/reports/${reportId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: "resolved",
+        publicNote: "Problema resolvido com sucesso.",
+      }),
+    },
+  );
+  assert.equal(resolveUpdate.status, 200);
+  const resolvedResult = (await resolveUpdate.json()) as { status: string };
+  assert.equal(resolvedResult.status, "resolved");
+
+  // 6. Bloqueio de retrocesso pós-resolução (resolved -> open)
+  const regressionUpdate = await fetch(
+    `${baseUrlRef.value}/operator/cities/curitiba/reports/${reportId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: "open" }),
+    },
+  );
+  assert.equal(regressionUpdate.status, 400);
+  const regErr = (await regressionUpdate.json()) as { code: string };
+  assert.equal(regErr.code, "INVALID_STATUS_TRANSITION");
+
+  // 7. Confirmação de que rota pública nunca expõe internalNote
   const publicDetail = await fetch(
     `${baseUrlRef.value}/cities/curitiba/reports/${reportId}`,
   );
@@ -199,12 +291,13 @@ test("municipal queue restricts access and keeps internal notes private", async 
     events: Array<Record<string, unknown>>;
   };
   assert.equal(publicDetail.status, 200);
-  assert.equal(publicReport.status, "in_progress");
+  assert.equal(publicReport.status, "resolved");
   assert.equal(
     publicReport.events.at(-1)?.publicNote,
-    "A equipe está avaliando o local.",
+    "Problema resolvido com sucesso.",
   );
   assert.equal("internalNote" in (publicReport.events.at(-1) ?? {}), false);
+  assert.ok(publicReport.events.every((e) => !("internalNote" in e)));
 
   const unassignedUserId = `unassigned-test-${randomUUID()}`;
   const unassignedSessionId = randomUUID().replaceAll("-", "").repeat(2);

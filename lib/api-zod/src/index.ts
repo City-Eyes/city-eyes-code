@@ -9,6 +9,7 @@ export type {
   ReportCategory,
   ReportCityId,
   ReportPage,
+  ReportStatus,
 } from "./generated/types";
 export type {
   ListCityReportsParams as ListCityReportsQuery,

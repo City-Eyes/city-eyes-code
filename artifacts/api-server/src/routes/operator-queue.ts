@@ -5,6 +5,7 @@ import {
   ListOperatorReportsQueryParams,
   ListOperatorReportsResponse,
   ListOperatorCitiesResponse,
+  type ReportStatus,
   UpdateOperatorReportBody,
   UpdateOperatorReportParams,
   UpdateOperatorReportResponse,
@@ -33,6 +34,13 @@ function sendApiError(
 ) {
   return res.status(status).json(ApiErrorSchema.parse({ code, message }));
 }
+
+const ALLOWED_STATUS_TRANSITIONS: Record<ReportStatus, readonly ReportStatus[]> = {
+  open: ["in_review", "in_progress"],
+  in_review: ["in_progress", "resolved"],
+  in_progress: ["resolved"],
+  resolved: [],
+};
 
 export function createOperatorQueueRouter(): IRouter {
   const router: IRouter = Router();
@@ -251,25 +259,11 @@ export function createOperatorQueueRouter(): IRouter {
       }
 
       try {
-        const access = await getAuthorizedCity(req.user!.id, path.data.cityId);
-        if (access === "missing") {
-          return sendApiError(
-            res,
-            404,
-            "CITY_NOT_FOUND",
-            "A cidade selecionada não está disponível.",
-          );
-        }
-        if (!access) {
-          return sendApiError(
-            res,
-            403,
-            "CITY_ACCESS_DENIED",
-            "Sua conta não tem acesso à fila desta cidade.",
-          );
-        }
+        const updateResult = await db.transaction(async (tx) => {
+          const access = await getAuthorizedCity(req.user!.id, path.data.cityId);
+          if (access === "missing") return { error: "CITY_NOT_FOUND" as const };
+          if (!access) return { error: "CITY_ACCESS_DENIED" as const };
 
-        const updated = await db.transaction(async (tx) => {
           const [existing] = await tx
             .select()
             .from(reports)
@@ -281,8 +275,24 @@ export function createOperatorQueueRouter(): IRouter {
             )
             .for("update")
             .limit(1);
-          if (!existing) return null;
+          if (!existing) return { error: "REPORT_NOT_FOUND" as const };
+
           const nextStatus = body.data.status ?? existing.status;
+          const isStatusChanged = nextStatus !== existing.status;
+
+          // Se o status não mudou e nenhuma nota foi informada, rejeita como atualização vazia
+          if (!isStatusChanged && !publicNote && !internalNote) {
+            return { error: "EMPTY_REPORT_UPDATE" as const };
+          }
+
+          // Se o status mudou, valida transição permitida pela máquina de estados
+          if (isStatusChanged) {
+            const allowed = ALLOWED_STATUS_TRANSITIONS[existing.status as ReportStatus] ?? [];
+            if (!allowed.includes(nextStatus as ReportStatus)) {
+              return { error: "INVALID_STATUS_TRANSITION" as const };
+            }
+          }
+
           const [report] = await tx
             .update(reports)
             .set({ status: nextStatus })
@@ -320,14 +330,47 @@ export function createOperatorQueueRouter(): IRouter {
             .limit(1);
           return { report, history, cityName: city?.name ?? "" };
         });
-        if (!updated) {
-          return sendApiError(
-            res,
-            404,
-            "REPORT_NOT_FOUND",
-            "O relato não existe nesta fila.",
-          );
+
+        if ("error" in updateResult) {
+          switch (updateResult.error) {
+            case "CITY_NOT_FOUND":
+              return sendApiError(
+                res,
+                404,
+                "CITY_NOT_FOUND",
+                "A cidade selecionada não está disponível.",
+              );
+            case "CITY_ACCESS_DENIED":
+              return sendApiError(
+                res,
+                403,
+                "CITY_ACCESS_DENIED",
+                "Sua conta não tem acesso à fila desta cidade.",
+              );
+            case "REPORT_NOT_FOUND":
+              return sendApiError(
+                res,
+                404,
+                "REPORT_NOT_FOUND",
+                "O relato não existe nesta fila.",
+              );
+            case "EMPTY_REPORT_UPDATE":
+              return sendApiError(
+                res,
+                400,
+                "EMPTY_REPORT_UPDATE",
+                "Informe um novo status ou uma nota.",
+              );
+            case "INVALID_STATUS_TRANSITION":
+              return sendApiError(
+                res,
+                400,
+                "INVALID_STATUS_TRANSITION",
+                "A transição de status solicitada não é permitida para este relato.",
+              );
+          }
         }
+        const updated = updateResult;
         return res.json(
           UpdateOperatorReportResponse.parse({
             id: updated.report.id,
