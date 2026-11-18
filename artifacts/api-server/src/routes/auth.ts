@@ -263,7 +263,7 @@ router.post("/mobile-auth/token-exchange", async (req: Request, res: Response) =
       "O retorno do aplicativo não é válido.",
     );
   }
-  if (!["http:", "https:", "exp:", "cityeyes:"].includes(callbackUrl.protocol)) {
+  if (!isAllowedMobileRedirectProtocol(callbackUrl.protocol)) {
     return sendApiError(
       res,
       400,
@@ -305,6 +305,10 @@ router.post("/mobile-auth/token-exchange", async (req: Request, res: Response) =
     );
   }
 });
+
+export function isAllowedMobileRedirectProtocol(protocol: string) {
+  return ["http:", "https:", "exp:", "city-eyes-mobile:"].includes(protocol);
+}
 
 router.post("/mobile-auth/logout", async (req: Request, res: Response) => {
   const sid = getSessionId(req);

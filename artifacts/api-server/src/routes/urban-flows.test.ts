@@ -21,6 +21,7 @@ import {
 } from "../lib/objectStorage";
 import { sweepExpiredPhotos } from "../lib/photo-retention";
 import { createApp } from "../app";
+import { isAllowedMobileRedirectProtocol } from "./auth";
 
 class FakeImageStorage implements ImageStorage {
   readonly paths = new Set<string>();
@@ -47,7 +48,10 @@ class FakeImageStorage implements ImageStorage {
     if (this.invalidPaths.has(objectPath)) {
       throw new InvalidUploadedImageError();
     }
+    const finalPath = `/objects/published/${randomUUID()}`;
+    this.paths.add(finalPath);
     return {
+      objectPath: finalPath,
       contentType: contentType as VerifiedImage["contentType"],
       size,
     };
@@ -364,12 +368,17 @@ test("session owns the report and public output omits operator-only notes", asyn
   const photo = await fetch(report.photoUrl!);
   assert.equal(photo.status, 200);
   assert.equal(photo.headers.get("content-type"), "image/jpeg");
+  assert.equal(storage.publicPaths.has(upload.objectPath), false);
+  const stagingPhoto = await fetch(
+    `${baseUrlRef.value}/storage/objects/${upload.objectPath.slice("/objects/".length)}`,
+  );
+  assert.equal(stagingPhoto.status, 404);
 
   await db
     .update(mediaUploads)
     .set({ expiresAt: new Date(Date.now() - 1_000) })
-    .where(eq(mediaUploads.objectPath, upload.objectPath));
-  assert.equal(await sweepExpiredPhotos(storage), 1);
+    .where(eq(mediaUploads.reportId, report.id));
+  assert.equal(await sweepExpiredPhotos(storage), 2);
   const expiredReport = await db
     .select({ imageObjectPath: reports.imageObjectPath })
     .from(reports)
@@ -389,4 +398,11 @@ test("image signature validation rejects mismatched metadata", () => {
   assert.equal(isSupportedImageSignature(webp, "image/webp"), true);
   assert.equal(isSupportedImageSignature(jpeg, "image/png"), false);
   assert.equal(isSupportedImageSignature(Buffer.from("GIF89a"), "image/gif"), false);
+});
+
+test("native authorization callback accepts the configured Expo scheme only", () => {
+  assert.equal(isAllowedMobileRedirectProtocol("city-eyes-mobile:"), true);
+  assert.equal(isAllowedMobileRedirectProtocol("exp:"), true);
+  assert.equal(isAllowedMobileRedirectProtocol("cityeyes:"), false);
+  assert.equal(isAllowedMobileRedirectProtocol("javascript:"), false);
 });
