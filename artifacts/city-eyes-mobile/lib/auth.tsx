@@ -12,6 +12,8 @@ import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
+import { clearProtectedCache } from "./protected-cache";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -105,13 +107,15 @@ function WebAuthProvider({ children }: { children: ReactNode }) {
 }
 
 function NativeAuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const sessionRevision = useRef(0);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [nonce, setNonce] = useState(() => Crypto.randomUUID());
   const handledCode = useRef("");
   const discovery = AuthSession.useAutoDiscovery(ISSUER_URL);
-  const redirectUri = AuthSession.makeRedirectUri();
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: "city-eyes-mobile" });
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: process.env.EXPO_PUBLIC_REPL_ID ?? "",
@@ -124,9 +128,13 @@ function NativeAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshUser = useCallback(async () => {
+    const revision = ++sessionRevision.current;
+    setIsLoading(true);
     try {
       const token = await getStoredAuthToken();
       if (!token) {
+        await clearProtectedCache(queryClient);
+        if (revision !== sessionRevision.current) return;
         setUser(null);
         setError("");
         return;
@@ -138,6 +146,9 @@ function NativeAuthProvider({ children }: { children: ReactNode }) {
       });
       if (!response.ok) throw new Error("Account check failed");
       const body = (await response.json()) as { user: AuthUser | null };
+      if (revision !== sessionRevision.current) return;
+      await clearProtectedCache(queryClient);
+      if (revision !== sessionRevision.current) return;
       if (body.user) {
         setUser(body.user);
         setError("");
@@ -147,11 +158,14 @@ function NativeAuthProvider({ children }: { children: ReactNode }) {
         setError("");
       }
     } catch {
+      if (revision !== sessionRevision.current) return;
+      setUser(null);
+      await clearProtectedCache(queryClient);
       setError("Não foi possível verificar sua conta. Confira a conexão e tente novamente.");
     } finally {
-      setIsLoading(false);
+      if (revision === sessionRevision.current) setIsLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     void refreshUser();
@@ -228,9 +242,13 @@ function NativeAuthProvider({ children }: { children: ReactNode }) {
   }, [promptAsync, request?.codeVerifier]);
 
   const logout = useCallback(async () => {
+    ++sessionRevision.current;
     setIsLoading(true);
+    setUser(null);
     try {
       const token = await getStoredAuthToken();
+      await clearStoredAuthToken();
+      await clearProtectedCache(queryClient);
       const apiBase = getApiBaseUrl();
       if (token && apiBase) {
         await fetch(`${apiBase}/api/mobile-auth/logout`, {
@@ -246,13 +264,15 @@ function NativeAuthProvider({ children }: { children: ReactNode }) {
       setError("");
       setIsLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   return (
     <AuthContext.Provider
       value={{ user, isLoading, error, login, logout, refreshUser }}
     >
-      {children}
+      <React.Fragment key={isLoading ? "checking" : user?.id ?? "anonymous"}>
+        {children}
+      </React.Fragment>
     </AuthContext.Provider>
   );
 }

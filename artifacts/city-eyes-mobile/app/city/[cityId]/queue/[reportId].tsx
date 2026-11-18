@@ -34,6 +34,7 @@ import {
   parseCityId,
 } from "@/components/app-ui";
 import { useAuth } from "@/lib/auth";
+import { clearProtectedCache, isAuthorizationError, protectedKey } from "@/lib/protected-cache";
 
 const statuses: { value: ReportStatus; label: string }[] = [
   { value: "open", label: "Aberto" },
@@ -70,6 +71,7 @@ export default function OperatorReportDetailScreen() {
   const colors = useColors();
   const client = useQueryClient();
   const auth = useAuth();
+  const [accessDenied, setAccessDenied] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<ReportStatus>("open");
   const [publicNote, setPublicNote] = useState("");
   const [internalNote, setInternalNote] = useState("");
@@ -77,13 +79,16 @@ export default function OperatorReportDetailScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const operatorCities = useListOperatorCities({
     query: {
-      queryKey: getListOperatorCitiesQueryKey(),
-      enabled: Boolean(auth.user),
+      queryKey: protectedKey(auth.user?.id, getListOperatorCitiesQueryKey()),
+      enabled: Boolean(auth.user) && !auth.isLoading && !accessDenied,
       retry: false,
+      staleTime: 0,
+      refetchOnMount: "always",
     },
   });
   const authorized = Boolean(
-    cityId && operatorCities.data?.some((city) => city.id === cityId),
+    auth.user && !auth.isLoading && !accessDenied && !operatorCities.isError &&
+    !operatorCities.isFetching && cityId && operatorCities.data?.some((city) => city.id === cityId),
   );
   const pageParams = { status: statusFilter, page, limit: 20, sort };
   const reportQuery = useListOperatorReports(
@@ -92,15 +97,29 @@ export default function OperatorReportDetailScreen() {
     {
       query: {
         enabled: authorized,
-        queryKey: getListOperatorReportsQueryKey(
+        queryKey: protectedKey(auth.user?.id, getListOperatorReportsQueryKey(
           cityId ?? "curitiba",
           pageParams,
-        ),
+        )),
+        retry: false,
       },
     },
   );
-  const report = reportQuery.data?.items.find((item) => item.id === reportId);
+  const report = authorized && !reportQuery.isError
+    ? reportQuery.data?.items.find((item) => item.id === reportId)
+    : undefined;
   const updateReport = useUpdateOperatorReport();
+  React.useEffect(() => {
+    if (!authorized) {
+      setPublicNote("");
+      setInternalNote("");
+      setMessage("");
+    }
+    if (isAuthorizationError(operatorCities.error) || isAuthorizationError(reportQuery.error)) {
+      setAccessDenied(true);
+      void clearProtectedCache(client);
+    }
+  }, [authorized, operatorCities.error, reportQuery.error, client]);
 
   React.useEffect(() => {
     if (report) setSelectedStatus(report.status);
@@ -124,7 +143,7 @@ export default function OperatorReportDetailScreen() {
   };
 
   const save = async () => {
-    if (!cityId || !report) return;
+    if (!authorized || !cityId || !report) return;
     setIsSaving(true);
     setMessage("");
     try {
@@ -140,10 +159,17 @@ export default function OperatorReportDetailScreen() {
         },
       });
       await client.invalidateQueries({
-        queryKey: getListOperatorReportsQueryKey(cityId, pageParams),
+        queryKey: protectedKey(auth.user?.id, getListOperatorReportsQueryKey(cityId, pageParams)),
       });
       returnToQueue("updated");
-    } catch {
+    } catch (error) {
+      if (isAuthorizationError(error)) {
+        setAccessDenied(true);
+        setPublicNote("");
+        setInternalNote("");
+        await clearProtectedCache(client);
+        return;
+      }
       setMessage(
         "Não foi possível salvar. As notas continuam preenchidas; tente novamente.",
       );
@@ -180,6 +206,7 @@ export default function OperatorReportDetailScreen() {
           </Typography>
         </View>
         {auth.isLoading ? <LoadingCards count={1} /> : null}
+        {accessDenied ? <Empty title="Acesso não autorizado" description="Sua autorização mudou. Volte à fila para verificar o acesso." /> : null}
         {!auth.isLoading && !auth.user ? (
           <Empty
             title="Entre para continuar"

@@ -26,6 +26,8 @@ import {
   parseCityId,
 } from "@/components/app-ui";
 import { useAuth } from "@/lib/auth";
+import { clearProtectedCache, isAuthorizationError, protectedKey } from "@/lib/protected-cache";
+import { useQueryClient } from "@tanstack/react-query";
 
 const statuses: { value: ReportStatus | undefined; label: string }[] = [
   { value: undefined, label: "Todos" },
@@ -55,6 +57,8 @@ export default function OperatorQueueScreen() {
   const initialSort = params.sort === "oldest" ? "oldest" : "newest";
   const colors = useColors();
   const auth = useAuth();
+  const client = useQueryClient();
+  const [accessDenied, setAccessDenied] = useState(false);
   const [filter, setFilter] = useState<ReportStatus | undefined>(
     statuses.find((item) => item.value === initialStatus)?.value,
   );
@@ -64,13 +68,16 @@ export default function OperatorQueueScreen() {
   const [sort, setSort] = useState<"newest" | "oldest">(initialSort);
   const operatorCities = useListOperatorCities({
     query: {
-      queryKey: getListOperatorCitiesQueryKey(),
-      enabled: Boolean(auth.user),
+      queryKey: protectedKey(auth.user?.id, getListOperatorCitiesQueryKey()),
+      enabled: Boolean(auth.user) && !auth.isLoading && !accessDenied,
       retry: false,
+      staleTime: 0,
+      refetchOnMount: "always",
     },
   });
   const authorized = Boolean(
-    cityId && operatorCities.data?.some((city) => city.id === cityId),
+    auth.user && !auth.isLoading && !accessDenied && !operatorCities.isError &&
+    !operatorCities.isFetching && cityId && operatorCities.data?.some((city) => city.id === cityId),
   );
   const pageParams = { status: filter, page, limit: 20, sort };
   const reportsQuery = useListOperatorReports(
@@ -79,13 +86,20 @@ export default function OperatorQueueScreen() {
     {
       query: {
         enabled: authorized,
-        queryKey: getListOperatorReportsQueryKey(
+        queryKey: protectedKey(auth.user?.id, getListOperatorReportsQueryKey(
           cityId ?? "curitiba",
           pageParams,
-        ),
+        )),
+        retry: false,
       },
     },
   );
+  React.useEffect(() => {
+    if (isAuthorizationError(operatorCities.error) || isAuthorizationError(reportsQuery.error)) {
+      setAccessDenied(true);
+      void clearProtectedCache(client);
+    }
+  }, [operatorCities.error, reportsQuery.error, client]);
 
   const openReport = (reportId: string) => {
     if (!cityId) return;
@@ -102,6 +116,8 @@ export default function OperatorQueueScreen() {
   };
 
   const retry = () => {
+    if (!auth.user || auth.isLoading) return;
+    setAccessDenied(false);
     void operatorCities.refetch();
     if (authorized) void reportsQuery.refetch();
   };
@@ -140,6 +156,7 @@ export default function OperatorQueueScreen() {
           <Typography variant="small">Atualização salva.</Typography>
         ) : null}
         {auth.isLoading ? <LoadingCards count={1} /> : null}
+        {accessDenied ? <Empty title="Acesso não autorizado" description="Sua autorização mudou. Entre novamente ou consulte suas cidades autorizadas." /> : null}
         {!auth.isLoading && !auth.user ? (
           <Empty
             title="Entre para continuar"
@@ -241,7 +258,7 @@ export default function OperatorQueueScreen() {
                   Mais antigos
                 </Button>
               </View>
-              {reportsQuery.data ? (
+              {reportsQuery.isSuccess && reportsQuery.data ? (
                 <Typography variant="caption">
                   {reportsQuery.data.total} relatos · página {page}
                 </Typography>
@@ -263,7 +280,7 @@ export default function OperatorQueueScreen() {
                 description="Quando houver relatos para este filtro, eles aparecerão aqui."
               />
             ) : null}
-            {reportsQuery.data?.items.map((report) => (
+            {reportsQuery.isSuccess && reportsQuery.data?.items.map((report) => (
               <Card key={report.id} style={styles.reportCard}>
                 <View style={styles.reportHeading}>
                   <View style={styles.reportTitle}>
@@ -285,7 +302,7 @@ export default function OperatorQueueScreen() {
                 </Button>
               </Card>
             ))}
-            {reportsQuery.data &&
+            {reportsQuery.isSuccess && reportsQuery.data &&
             (page > 1 || reportsQuery.data.hasNextPage) ? (
               <View style={styles.pagination}>
                 <Button
