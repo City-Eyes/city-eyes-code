@@ -76,7 +76,7 @@ export default function AuthScreen() {
 function ViewHeading() {
   return (
     <View style={styles.heading}>
-      <Typography variant="eyebrow">CONTA CITY EYES</Typography>
+      <Typography variant="eyebrow">CONTA OLHAR CIDADÃO</Typography>
       <Typography variant="display">Acesso seguro</Typography>
       <Typography variant="muted">
         Entre para enviar um relato. Sua conta ajuda a proteger a fila de envios.
