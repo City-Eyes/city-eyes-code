@@ -42,7 +42,7 @@ const queryClient = new QueryClient({
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
-      <Stack.Screen name="index" />
+      <Stack.Screen name="(tabs)" />
       <Stack.Screen name="city/[cityId]" />
       <Stack.Screen name="city/[cityId]/report/[reportId]" />
       <Stack.Screen name="city/[cityId]/report/new" />

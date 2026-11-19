@@ -16,7 +16,7 @@ localPort = 19916
 run = "pnpm --filter @workspace/city-eyes-mobile run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/city-eyes-mobile", "run", "build" ]
+build = [ "pnpm", "--filter", "@workspace/city-eyes-mobile", "run", "build:web" ]
 run = [ "pnpm", "--filter", "@workspace/city-eyes-mobile", "run", "serve" ]
 
 [services.env]
