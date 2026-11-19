@@ -66,16 +66,21 @@ export function formatDate(value: string) {
 export function Screen({
   children,
   style,
+  inTabs = false,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
+  inTabs?: boolean;
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const paddingTop =
     Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
-  const paddingBottom =
-    Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
+  const paddingBottom = inTabs
+    ? 0
+    : Platform.OS === "web"
+      ? Math.max(insets.bottom, 34)
+      : insets.bottom;
 
   return (
     <View
@@ -111,11 +116,11 @@ export function BrandHeader() {
       <Image
         source={require("../assets/images/icon.png")}
         style={styles.brandIcon}
-        accessibilityLabel="Símbolo do CITY EYES"
+        accessibilityLabel="Símbolo do Olhar Cidadão"
       />
       <View style={styles.brandCopy}>
         <Typography variant="small" style={styles.brandName}>
-          CITY EYES
+          Olhar Cidadão
         </Typography>
         <Typography variant="caption">relatos urbanos por cidade</Typography>
       </View>

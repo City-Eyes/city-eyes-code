@@ -37,7 +37,7 @@ export default function CitySelectionScreen() {
   };
 
   return (
-    <Screen>
+    <Screen inTabs>
       <ScreenScrollView
         refreshControl={
           <RefreshControl
@@ -107,7 +107,7 @@ export default function CitySelectionScreen() {
 
         <View style={styles.footer}>
           <Typography variant="caption">
-            CITY EYES · consulta pública demonstrativa
+            Olhar Cidadão · consulta pública demonstrativa
           </Typography>
         </View>
       </ScreenScrollView>
