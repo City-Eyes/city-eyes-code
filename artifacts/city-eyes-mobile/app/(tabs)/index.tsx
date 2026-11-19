@@ -37,7 +37,7 @@ export default function CitySelectionScreen() {
   };
 
   return (
-    <Screen>
+    <Screen inTabs>
       <ScreenScrollView
         refreshControl={
           <RefreshControl

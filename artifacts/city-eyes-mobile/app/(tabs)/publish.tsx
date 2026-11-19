@@ -15,7 +15,7 @@ export default function PublishScreen() {
   const cities = citiesQuery.data ?? [];
 
   return (
-    <Screen>
+    <Screen inTabs>
       <ScreenScrollView
         refreshControl={
           <RefreshControl

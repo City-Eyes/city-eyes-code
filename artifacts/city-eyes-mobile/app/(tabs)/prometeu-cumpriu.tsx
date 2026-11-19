@@ -16,7 +16,7 @@ const previewSections = [
 export default function PrometeuCumpriuScreen() {
   const colors = useColors();
   return (
-    <Screen>
+    <Screen inTabs>
       <ScreenScrollView>
         <View style={styles.heading}>
           <Typography variant="eyebrow">TRANSPARÊNCIA POLÍTICA</Typography>
